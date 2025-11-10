@@ -1,6 +1,58 @@
 #define TEST 44
 
 #define KEYFRAME(...) InitKeyframe((Keyframe) __VA_ARGS__)
+#define Define_Keyframe(type, subtype)   \
+    typedef struct {            \
+        type Add;           \
+        type Mult;          \
+        int EasingFrames; \
+        int HeldFrames; \
+    } __keyframe__##type;       \
+    type Transform##type(TransformContext* ctx, type input){\
+        type output;\
+        output = __add_##type(ctx->__Modification.Add, input);\
+        output = __mult_##type(ctx->__Modification.Mult, output);\
+    }\
+    type InitKeyframe##type(){\
+    }\
+
+#define __USE_RAYLIB true
+#if __USE_RAYLIB
+#define __Vector4_f32 Rectangle
+#define __Vector2_f32 Vector2
+#define __Vector4_i32 Color
+Rectangle __add_Rectangle(Rectangle _1, Rectangle _2) {
+    return (Rectangle){_1.x+_2.x, _1.y+_2.y, _1.width+_2.width, _1.height+_2.height};
+}
+Rectangle __mult_Rectangle(Rectangle _1, Rectangle _2) {
+    return (Rectangle){_1.x*_2.x, _1.y*_2.y, _1.width*_2.width, _1.height*_2.height};
+}
+#endif
+
+//Define_Keyframe(Rectangle, float);
+float compare(int x, int lower, int upper);
+float QuadraticEaseInOut(float p);
+
+void temp_func(){
+    typedef struct {
+        float a;
+        float b;
+        float c;
+    } uniform_struct;
+
+    float* arr;
+    uniform_struct s = {1.2, 2.3, 3.4};
+    arr = (float*)&s;
+    
+    printf("%f,%f, %f\n", s.a, s.b, s.c);
+    printf("%f, %f, %f\n", arr[0], arr[1], arr[2]);
+    printf("%lu, %lu", sizeof(uniform_struct), sizeof(float));
+}
+
+typedef enum {
+    PLAYMODE_PLAY_ONCE,
+    PLAYMODE_BOOMERANG
+} PlayMode;
 
 typedef struct {
     float AOffset;
@@ -14,10 +66,89 @@ typedef struct {
 
 } Keyframe;
 
-typedef enum {
-    PLAYMODE_PLAY_ONCE,
-    PLAYMODE_BOOMERANG
-} PlayMode;
+// ===== Rectangle specific ======
+
+typedef struct {
+    Rectangle Add;
+    Rectangle Mult; 
+
+    int EasingFrames;
+    int HeldFrames;
+} Keyframe_Rectangle;
+
+typedef struct {
+    Keyframe_Rectangle* Keyframes;
+    int NumKeyframes;
+    int Index;
+    bool Playing;
+    PlayMode Mode;
+
+    //read-only
+    int __KeyframeIndex;
+    bool __Held;
+    Keyframe_Rectangle __Modification;
+} TransformContext_Rectangle;
+
+Rectangle ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle input) {
+    input = (Rectangle) {modifier.Add.x + input.x, modifier.Add.y + input.y, modifier.Add.width + input.width, modifier.Add.height + input.height};
+    return input;
+
+    //scaling not yet applied -- need to initialize to 1 instead of zero so default doesn't change anything
+    return (Rectangle) {modifier.Mult.x * input.height, modifier.Mult.y + input.y, modifier.Mult.width * input.width, modifier.Mult.height * input.height};
+
+    // and then obviously there will need to be some offsetting when the option to add 
+}
+
+Keyframe_Rectangle CalculateModifier_Rectangle(TransformContext_Rectangle* ctx) {
+    Keyframe_Rectangle modifier = {0};
+    int cumulative_lower = 0;
+    int cumulative_upper = 0;
+    for(int i = 0; i < ctx->NumKeyframes; i++) {
+
+        //CANT just use frame[i].easingFrames, need to convert into some sort of cumulative index. EX:
+        // {.Easing=10, .held=15}, {.easing=7, held=12}
+        // becomes...
+        // 10, 25, 32, 44
+        // compare(idx, 0, 10), compare(idx, 25, 32)
+
+        cumulative_upper += cumulative_lower + ctx->Keyframes[i].EasingFrames;
+
+        modifier.Add.x += ( QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper)) * ctx->Keyframes[i].Add.x );
+        modifier.Add.y += ( QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper)) * ctx->Keyframes[i].Add.y );
+        modifier.Add.width += ( QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper)) * ctx->Keyframes[i].Add.width );
+        modifier.Add.height += ( QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper)) * ctx->Keyframes[i].Add.height );
+
+        cumulative_lower += ctx->Keyframes[i].EasingFrames + ctx->Keyframes[i].HeldFrames;
+    }
+
+    return modifier;
+}
+
+Rectangle Animate_Rectangle(TransformContext_Rectangle* ctx, Rectangle input) {
+
+    //step through index
+    int MaxIndex = 0;
+    for (int i = 0; i < ctx->NumKeyframes; i++) {
+        MaxIndex += ctx->Keyframes[i].EasingFrames;
+        MaxIndex += ctx->Keyframes[i].HeldFrames;
+    }
+    ctx->Index++;
+    ctx->Index = ctx->Index % MaxIndex;
+
+    //find modification
+    ctx->__Modification = CalculateModifier_Rectangle(ctx);
+
+    return ApplyTransform_Rectangle(ctx->__Modification, input);
+}
+
+// ===== Rectangle specific ======
+
+typedef struct {
+    __Vector2_f32 Add;
+    __Vector2_f32 Mult;
+    int EasingFrames;
+    int HeldFrames;
+} Keyframe__Vector2_f32;
 
 typedef struct {
     Keyframe* Keyframes;
@@ -111,7 +242,7 @@ float BounceEaseOut(float p)
 Vector2 Transform_Vector2(TransformContext* ctx, Vector2 vector) {
 
     //TODO: Need to do some sort of system that recursively applies all previous modifications so that easing in the second keyframe starts from the end of the first keyframe, not the initial position.
-    //Thinking basically a modification Keyframe object that gets applied to the input vector every frame. Each frame that modification Keyframe gets cumulatively adjusted by the timeline of keyframes.
+    //Thinking basically a modification Keyframe object that gets applied to the input vector every frame. Each frame, that modification Keyframe gets cumulatively adjusted by the timeline of keyframes.
     // For scrubbing backwards, the modifications just get undone off the modification Keyframe
 
 
@@ -136,6 +267,8 @@ Vector2 Transform_Vector2(TransformContext* ctx, Vector2 vector) {
         float ModFactor = QuadraticEaseInOut(((float)SubKeyframeIdx / (float)ctx->Keyframes[ctx->__KeyframeIndex].EasingFrames));
 
         //printf("Difference: %d in: %f modfactor: %f\n", Difference, ((float)SubKeyframeIdx / (float)ctx->Keyframes[ctx->__KeyframeIndex].EasingFrames), ModFactor);
+
+        //ctx->__Modification.AOffset += 
 
         return_vector.x = vector.x + (ModFactor * ctx->Keyframes[ctx->__KeyframeIndex].AOffset);
         return_vector.x *= (1 + (ModFactor * (ctx->Keyframes[ctx->__KeyframeIndex].AScale - 1)) );
@@ -178,3 +311,71 @@ Vector2 Transform_Vector2(TransformContext* ctx, Vector2 vector) {
 }
 
 
+/*
+
+sketch
+
+#define KF(...) initKF(...)
+
+struct {
+    Rectangle  add;
+    Rectangle mult;
+    int frames;
+} Keyframe_Rectangle;
+
+Keyframe_Rectangle frames[2] = {
+    //raylib rectangle:
+    KF({.Add.x=10, .Mult.width=1.5}),
+    KF({.Add.height=-6});
+}
+
+==================
+assume no held frames
+
+{.Add.x = 10, .EasingFrames = 20}, {.Add.y = 5, .EasingFrames = 30};
+
+easingFactor = calc_easing(idx / 20)
+output.x = input.x + (easingFactor * keyframe1.Add.x)
+
+//instead...
+
+easingFactor1 = calc_easing(idx / EasingFrames1)
+easingFactor2 = calc_easing(idx / EasingFrames2)
+modifier.add.x = easingFactor1 * keyframe1.add.x + easingFactor2 * keyframe2.add.x
+output.x = modifier.add.x + input.x
+
+modifier = {0};
+int cumulative_lower, cumulative_upper = 0;
+for(int i = 0; i < num_frames; i++) {
+
+    //CANT just use frame[i].easingFrames, need to convert into some sort of cumulative index. EX:
+    {.Easing=10, .held=15}, {.easing=7, held=12}
+    becomes...
+    10, 25, 32, 44
+    compare(idx, 0, 10), compare(idx, 25, 32)
+
+    cumulative_upper += cumulative_lower + frame[i].easingFrames;
+
+    modifier.add.x += ( calc_easing(compare(idx, cumulative_lower, cumulative_upper)) * frame[i].add.x );
+    modifier.add.y += ( calc_easing(compare(idx, cumulative_lower, cumulative_upper)) * frame[i].add.y );
+    modifier.add.width += ( calc_easing(compare(idx, cumulative_lower, cumulative_upper)) * frame[i].add.width );
+    modifier.add.height += ( calc_easing(compare(idx, cumulative_lower, cumulative_upper)) * frame[i].add.height );
+
+    cumulative_lower += frame[i].easingFrames + frame[i].heldFrames;
+}
+
+
+*/
+
+float compare(int x, int lower, int upper) {
+    if (x < lower) {
+        return 0;
+    }
+    else if (x > upper) {
+        return 1;
+    }
+    else {
+        return ((float)(x-lower) / (float)(upper-lower));
+    }
+    
+}

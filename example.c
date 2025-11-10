@@ -1,11 +1,11 @@
 #include "stdio.h"
 
-#define RAYGUI_IMPLEMENTATION
-
 #include "raylib.h"
 #include "ckey.h"
 
 int main() {
+
+    temp_func();
 
     InitWindow(680, 400, "Example");
     SetTargetFPS(60);
@@ -28,10 +28,20 @@ int main() {
     Vector2 position = {30,30};
     Vector2 dimensions = {100,100};
 
+    Keyframe_Rectangle __frames[2] = {
+        (Keyframe_Rectangle){.Add.x=100, .EasingFrames=50}, 
+        (Keyframe_Rectangle){.Add.y=150, .EasingFrames=20, .HeldFrames=60}
+    };
+    
+    TransformContext_Rectangle ctx_rec = {.Keyframes=__frames, .NumKeyframes=2};
+
+    Rectangle __rec = {60, 60, 30, 30};
+
     while(!WindowShouldClose()) {
 
         if(IsKeyPressed(KEY_A)) {
             ctx.Playing = !ctx.Playing;
+            ctx_rec.Playing = !ctx_rec.Playing;
         }
         if(IsKeyPressed(KEY_S)) {
             dim_ctx.Playing = !dim_ctx.Playing;
@@ -42,9 +52,15 @@ int main() {
 
             ClearBackground(RED);
 
-            Vector2 new_position = Transform_Vector2(&ctx, position);
-            Vector2 new_dims = Transform_Vector2(&dim_ctx,dimensions);
-            DrawRectangle(new_position.x, new_position.y, new_dims.x, new_dims.y, BLACK);
+            // Vector2 new_position = Transform_Vector2(&ctx, position);
+            // Vector2 new_dims = Transform_Vector2(&dim_ctx,dimensions);
+            // DrawRectangle(new_position.x, new_position.y, new_dims.x, new_dims.y, BLACK);
+
+            Rectangle animated_rec = Animate_Rectangle(&ctx_rec, __rec);
+            DrawRectangleRec(animated_rec, WHITE);
+
+            // printf("\nOG REC: %f, %f, %f, %f\n", __rec.x, __rec.y, __rec.width, __rec.height);
+            // printf("ANI REC: %f, %f, %f, %f\n", animated_rec.x, animated_rec.y, animated_rec.width, animated_rec.height);
         
         EndDrawing();
     }
