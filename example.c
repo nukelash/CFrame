@@ -20,7 +20,7 @@ int main() {
     TransformContext_Rectangle ctx_rec = {
         .Keyframes=keyframes,
         .NumKeyframes=3,
-        .Mode=PLAYMODE_BOOMERANG
+        .Mode=PLAYMODE_PLAY_ONCE
     };
 
     Keyframe_Rectangle alt_keyframes[2] = {
@@ -31,10 +31,8 @@ int main() {
     TransformContext_Rectangle alt_ctx_rec = {
         .Keyframes=alt_keyframes,
         .NumKeyframes=2,
-        .Mode=PLAYMODE_BOOMERANG
+        .Mode=PLAYMODE_PLAY_ONCE_AND_RESET
     };
-
-    printf("playing: %d\n", ctx_rec.Playing);
 
     Rectangle rec = {60, 60, 30, 30};
 

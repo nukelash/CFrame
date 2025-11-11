@@ -51,6 +51,7 @@ void temp_func(){
 
 typedef enum {
     PLAYMODE_PLAY_ONCE,
+    PLAYMODE_PLAY_ONCE_AND_RESET,
     PLAYMODE_BOOMERANG
 } PlayMode;
 
@@ -132,13 +133,28 @@ Rectangle Animate_Rectangle(TransformContext_Rectangle* ctx, Rectangle input) {
         int MaxIndex = 0;
         switch (ctx->Mode)
         {
+        case PLAYMODE_PLAY_ONCE_AND_RESET:
+            for (int i = 0; i < ctx->NumKeyframes; i++) {
+                MaxIndex += ctx->Keyframes[i].EasingFrames;
+                MaxIndex += ctx->Keyframes[i].HeldFrames;
+            }
+            ctx->Index++;
+            if(ctx->Index >= MaxIndex) {
+                ctx->Index = 0;
+                ctx->Playing = false;
+            }
+            break;
+        
         case PLAYMODE_PLAY_ONCE:
             for (int i = 0; i < ctx->NumKeyframes; i++) {
                 MaxIndex += ctx->Keyframes[i].EasingFrames;
                 MaxIndex += ctx->Keyframes[i].HeldFrames;
             }
             ctx->Index++;
-            ctx->Index = ctx->Index % MaxIndex;
+            if(ctx->Index >= MaxIndex) {
+                ctx->Index = MaxIndex - 1;
+                ctx->Playing = false;
+            }
             break;
 
         case PLAYMODE_BOOMERANG:
