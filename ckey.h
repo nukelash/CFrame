@@ -87,9 +87,10 @@ typedef struct {
     int __KeyframeIndex;
     bool __Held;
     Keyframe_Rectangle __Modification;
+    bool __Reverse;
 } TransformContext_Rectangle;
 
-Rectangle ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle input) {
+Rectangle __ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle input) {
     input = (Rectangle) {modifier.Add.x + input.x, modifier.Add.y + input.y, modifier.Add.width + input.width, modifier.Add.height + input.height};
     return input;
 
@@ -99,7 +100,7 @@ Rectangle ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle input)
     // and then obviously there will need to be some offsetting when the option to add 
 }
 
-Keyframe_Rectangle CalculateModifier_Rectangle(TransformContext_Rectangle* ctx) {
+Keyframe_Rectangle __CalculateModifier_Rectangle(TransformContext_Rectangle* ctx) {
     Keyframe_Rectangle modifier = {0};
     int cumulative_lower = 0;
     int cumulative_upper = 0;
@@ -111,7 +112,7 @@ Keyframe_Rectangle CalculateModifier_Rectangle(TransformContext_Rectangle* ctx) 
         // 10, 25, 32, 44
         // compare(idx, 0, 10), compare(idx, 25, 32)
 
-        cumulative_upper += cumulative_lower + ctx->Keyframes[i].EasingFrames;
+        cumulative_upper = cumulative_lower + ctx->Keyframes[i].EasingFrames;
 
         modifier.Add.x += ( QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper)) * ctx->Keyframes[i].Add.x );
         modifier.Add.y += ( QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper)) * ctx->Keyframes[i].Add.y );
@@ -127,18 +128,53 @@ Keyframe_Rectangle CalculateModifier_Rectangle(TransformContext_Rectangle* ctx) 
 Rectangle Animate_Rectangle(TransformContext_Rectangle* ctx, Rectangle input) {
 
     //step through index
-    int MaxIndex = 0;
-    for (int i = 0; i < ctx->NumKeyframes; i++) {
-        MaxIndex += ctx->Keyframes[i].EasingFrames;
-        MaxIndex += ctx->Keyframes[i].HeldFrames;
+    if(ctx->Playing) {
+        int MaxIndex = 0;
+        switch (ctx->Mode)
+        {
+        case PLAYMODE_PLAY_ONCE:
+            for (int i = 0; i < ctx->NumKeyframes; i++) {
+                MaxIndex += ctx->Keyframes[i].EasingFrames;
+                MaxIndex += ctx->Keyframes[i].HeldFrames;
+            }
+            ctx->Index++;
+            ctx->Index = ctx->Index % MaxIndex;
+            break;
+
+        case PLAYMODE_BOOMERANG:
+            
+            for (int i = 0; i < ctx->NumKeyframes; i++) {
+                MaxIndex += ctx->Keyframes[i].EasingFrames;
+                MaxIndex += ctx->Keyframes[i].HeldFrames;
+            }
+
+            if(ctx->__Reverse) {
+                ctx->Index--;
+            }
+            else {
+                ctx->Index++;
+            }
+            
+            if(ctx->Index == MaxIndex) {
+                ctx->__Reverse = true;
+            }
+
+            if(ctx->Index == 0) {
+                ctx->__Reverse = false;
+            }
+
+            break;
+
+        default:
+            break;
+        }
+        
     }
-    ctx->Index++;
-    ctx->Index = ctx->Index % MaxIndex;
 
     //find modification
-    ctx->__Modification = CalculateModifier_Rectangle(ctx);
+    ctx->__Modification = __CalculateModifier_Rectangle(ctx);
 
-    return ApplyTransform_Rectangle(ctx->__Modification, input);
+    return __ApplyTransform_Rectangle(ctx->__Modification, input);
 }
 
 // ===== Rectangle specific ======
@@ -368,14 +404,18 @@ for(int i = 0; i < num_frames; i++) {
 */
 
 float compare(int x, int lower, int upper) {
+    float output;
     if (x < lower) {
-        return 0;
+        output = 0;
     }
     else if (x > upper) {
-        return 1;
+        output = 1;
     }
     else {
-        return ((float)(x-lower) / (float)(upper-lower));
+        output = ((float)(x-lower) / (float)(upper-lower));
     }
-    
+
+    //printf("%d, %d, %d, %f\n", x, lower, upper, output);
+
+    return output;
 }
