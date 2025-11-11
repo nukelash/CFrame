@@ -17,3 +17,16 @@ if(APPLE)
                    "-framework OpenGL")
     target_link_libraries(example PUBLIC ${FRAMEWORKS})
 endif()
+
+add_executable(hover hover.c)
+include_directories(hover ${CMAKE_SOURCE_DIR}/dep/raylib/include)
+target_link_libraries(hover PUBLIC ${CMAKE_SOURCE_DIR}/dep/raylib/lib/libraylib.a)
+
+if(APPLE)
+    set(FRAMEWORKS "-framework CoreVideo"
+                   "-framework IOKit" 
+                   "-framework Cocoa"
+                   "-framework GLUT" 
+                   "-framework OpenGL")
+    target_link_libraries(hover PUBLIC ${FRAMEWORKS})
+endif()

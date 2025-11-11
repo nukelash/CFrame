@@ -14,6 +14,8 @@
 //     type InitKeyframe##type(){\
 //     }\
 
+#include "stdio.h"
+
 #define NEW_KEYFRAME_Rectangle(...) NewKeyframe_Rectangle((Keyframe_Rectangle) __VA_ARGS__)
 
 #define __USE_RAYLIB true
@@ -36,7 +38,7 @@ float QuadraticEaseInOut(float p);
 typedef enum {
     PLAYMODE_PLAY_ONCE,
     PLAYMODE_PLAY_ONCE_AND_RESET,
-    PLAYMODE_BOOMERANG
+    PLAYMODE_BOOMERANG,
 } PlayMode;
 
 // ===== Rectangle specific ======
@@ -66,11 +68,11 @@ typedef struct {
 } TransformContext_Rectangle;
 
 Rectangle __ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle input) {
-    printf("adding: %f + %f\n", modifier.Add.x, input.x);
+    // printf("adding: %f + %f\n", modifier.Add.x, input.x);
     input = (Rectangle) {modifier.Add.x + input.x, modifier.Add.y + input.y, modifier.Add.width + input.width, modifier.Add.height + input.height};
 
     //scaling not yet applied -- need to initialize to 1 instead of zero so default doesn't change anything
-    printf("scaling: %f * %f\n", modifier.Mult.x, input.x);
+    // printf("scaling: %f * %f\n", modifier.Mult.x, input.x);
     return (Rectangle) {modifier.Mult.x * input.x, modifier.Mult.y + input.y, modifier.Mult.width * input.width, modifier.Mult.height * input.height};
 
     // and then obviously there will need to be some offsetting when the option to add 
@@ -136,10 +138,20 @@ Rectangle Animate_Rectangle(TransformContext_Rectangle* ctx, Rectangle input) {
                 MaxIndex += ctx->Keyframes[i].EasingFrames;
                 MaxIndex += ctx->Keyframes[i].HeldFrames;
             }
-            ctx->Index++;
+
+            if(ctx->__Reverse) {
+                ctx->Index--;
+            }
+            else {
+                ctx->Index++;
+            }
+            
             if(ctx->Index >= MaxIndex) {
                 ctx->Index = MaxIndex - 1;
-                ctx->Playing = false;
+            }
+
+            if(ctx->Index <= 0) {
+                ctx->Index = 0;
             }
             break;
 
