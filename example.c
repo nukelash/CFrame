@@ -5,16 +5,14 @@
 
 int main() {
 
-    temp_func();
-
     InitWindow(680, 400, "Example");
     SetTargetFPS(60);
 
 
     Keyframe_Rectangle keyframes[3] = {
-        (Keyframe_Rectangle){.Add.x=300, .Add.y=100, .EasingFrames=60, .HeldFrames=10}, 
-        (Keyframe_Rectangle){.Add.y=150, .EasingFrames=60, .HeldFrames=10},
-        (Keyframe_Rectangle){.Add.x=100, .EasingFrames=60, .HeldFrames=10}
+        NEW_KEYFRAME_Rectangle({.Add.x=300, .Add.y=100, .EasingFrames=60, .HeldFrames=10}), 
+        NEW_KEYFRAME_Rectangle({.Add.y=150, .EasingFrames=60, .HeldFrames=10}),
+        NEW_KEYFRAME_Rectangle({.Mult.width=2.5, .EasingFrames=60, .HeldFrames=10})
     };
 
     TransformContext_Rectangle ctx_rec = {
@@ -48,7 +46,8 @@ int main() {
 
             ClearBackground(RED);
 
-            Rectangle animated_rec = Animate_Rectangle(&alt_ctx_rec, Animate_Rectangle(&ctx_rec, rec));
+            //Rectangle animated_rec = Animate_Rectangle(&alt_ctx_rec, Animate_Rectangle(&ctx_rec, rec));
+            Rectangle animated_rec = Animate_Rectangle(&ctx_rec, rec);
             DrawRectangleRec(animated_rec, WHITE);
 
             // printf("\nOG REC: %f, %f, %f, %f\n", __rec.x, __rec.y, __rec.width, __rec.height);
