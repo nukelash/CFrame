@@ -15,6 +15,21 @@ int main() {
         NEW_KEYFRAME_Rectangle({.Mult.width=2.5, .EasingFrames=60, .HeldFrames=10})
     };
 
+    Keyframe_Color color_frames[2] = {
+        NEW_KEYFRAME_Color({.Add.r=-255,
+        .Add.g=255, 
+        .EasingFrames=80}),
+        NEW_KEYFRAME_Color({.Add.g=-255,
+        .Add.b=255, 
+        .EasingFrames=80})
+    };
+    TransformContext_Color ctx_color = {
+        .Keyframes=color_frames,
+        .NumKeyframes=2,
+        .Mode=PLAYMODE_LOOP
+    };
+    Color c = {255, 0, 0, 255};
+
     TransformContext_Rectangle ctx_rec = {
         .Keyframes=keyframes,
         .NumKeyframes=3,
@@ -29,7 +44,7 @@ int main() {
     TransformContext_Rectangle alt_ctx_rec = {
         .Keyframes=alt_keyframes,
         .NumKeyframes=2,
-        .Mode=PLAYMODE_PLAY_ONCE_AND_RESET
+        .Mode=PLAYMODE_LOOP
     };
 
     Rectangle rec = {60, 60, 30, 30};
@@ -39,16 +54,17 @@ int main() {
         if(IsKeyPressed(KEY_A)) {
             ctx_rec.Playing = !ctx_rec.Playing;
             alt_ctx_rec.Playing = !alt_ctx_rec.Playing;
+            ctx_color.Playing = !ctx_color.Playing;
         }
 
 
         BeginDrawing();
 
-            ClearBackground(RED);
+            ClearBackground(GRAY);
 
             //Rectangle animated_rec = Animate_Rectangle(&alt_ctx_rec, Animate_Rectangle(&ctx_rec, rec));
             Rectangle animated_rec = Animate_Rectangle(&ctx_rec, rec);
-            DrawRectangleRec(animated_rec, WHITE);
+            DrawRectangleRec(animated_rec, Animate_Color(&ctx_color, c));
 
             // printf("\nOG REC: %f, %f, %f, %f\n", __rec.x, __rec.y, __rec.width, __rec.height);
             // printf("ANI REC: %f, %f, %f, %f\n", animated_rec.x, animated_rec.y, animated_rec.width, animated_rec.height);

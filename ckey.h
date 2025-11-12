@@ -17,6 +17,7 @@
 #include "stdio.h"
 
 #define NEW_KEYFRAME_Rectangle(...) NewKeyframe_Rectangle((Keyframe_Rectangle) __VA_ARGS__)
+#define NEW_KEYFRAME_Color(...) NewKeyframe_Color((Keyframe_Color) __VA_ARGS__)
 
 #define __USE_RAYLIB true
 #if __USE_RAYLIB
@@ -37,15 +38,90 @@ float QuadraticEaseInOut(float p);
 
 typedef enum {
     PLAYMODE_PLAY_ONCE,
-    PLAYMODE_PLAY_ONCE_AND_RESET,
-    PLAYMODE_BOOMERANG,
+    PLAYMODE_LOOP,
+    PLAYMODE_BOOMERANG_ONCE,
+    PLAYMODE_BOOMERANG_LOOP
+
+    //alternatively: PLAY_ONCE, LOOP, BOOMERANG
 } PlayMode;
+
+typedef struct {
+    float _1;
+    float _2;
+    float _3;
+    float _4;
+} _Vector_4f;
+
+typedef struct {
+    _Vector_4f Add;
+    _Vector_4f Mult;
+} Modifier_4f;
+
+void __StepIndex(int* CtxIndex, bool* CtxPlaying, bool* CtxReverse, int MaxIndex, PlayMode CtxPlaymode, int CtxNumKeyframes) {
+    
+    switch (CtxPlaymode)
+    {
+    case PLAYMODE_LOOP:
+        
+        if(*CtxReverse) {
+            (*CtxIndex)--;
+        }
+        else {
+            (*CtxIndex)++;
+        }
+
+        *CtxIndex = (*CtxIndex) % MaxIndex;
+        break;
+    
+    case PLAYMODE_PLAY_ONCE:
+
+        if(*CtxReverse) {
+            (*CtxIndex)--;
+        }
+        else {
+            (*CtxIndex)++;
+        }
+        
+        if(*CtxIndex >= MaxIndex) {
+            *CtxIndex = MaxIndex;
+        }
+
+        if(*CtxIndex <= 0) {
+            *CtxIndex = 0;
+        }
+        break;
+
+    case PLAYMODE_BOOMERANG_LOOP:
+
+        if(*CtxReverse) {
+            (*CtxIndex)--;
+        }
+        else {
+            (*CtxIndex)++;
+        }
+        
+        if(*CtxIndex == MaxIndex) {
+            *CtxReverse = true;
+        }
+
+        if(*CtxIndex == 0) {
+            *CtxReverse = false;
+        }
+
+        break;
+
+    default:
+        break;
+    }
+
+}
 
 // ===== Rectangle specific ======
 
 typedef struct {
     Rectangle Add;
-    Rectangle Mult; 
+    Rectangle Mult;
+    //Rectangle To; //idea is that you could alternatively just define the final parameters
 
     int EasingFrames;
     int HeldFrames;
@@ -57,14 +133,14 @@ typedef struct {
     Keyframe_Rectangle* Keyframes;
     int NumKeyframes;
     int Index;
-    bool Playing;
+    bool Playing;    
+    bool __Reverse; //might want to cheange this to enum Direction = FORWARD or REVERSE for clarity
     PlayMode Mode;
 
     //read-only
     int __KeyframeIndex;
     bool __Held;
     Keyframe_Rectangle __Modification;
-    bool __Reverse;
 } TransformContext_Rectangle;
 
 Rectangle __ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle input) {
@@ -73,7 +149,7 @@ Rectangle __ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle inpu
 
     //scaling not yet applied -- need to initialize to 1 instead of zero so default doesn't change anything
     // printf("scaling: %f * %f\n", modifier.Mult.x, input.x);
-    return (Rectangle) {modifier.Mult.x * input.x, modifier.Mult.y + input.y, modifier.Mult.width * input.width, modifier.Mult.height * input.height};
+    return (Rectangle) {modifier.Mult.x * input.x, modifier.Mult.y * input.y, modifier.Mult.width * input.width, modifier.Mult.height * input.height};
 
     // and then obviously there will need to be some offsetting when the option to add 
 }
@@ -119,69 +195,11 @@ Rectangle Animate_Rectangle(TransformContext_Rectangle* ctx, Rectangle input) {
     //step through index
     if(ctx->Playing) {
         int MaxIndex = 0;
-        switch (ctx->Mode)
-        {
-        case PLAYMODE_PLAY_ONCE_AND_RESET:
-            for (int i = 0; i < ctx->NumKeyframes; i++) {
-                MaxIndex += ctx->Keyframes[i].EasingFrames;
-                MaxIndex += ctx->Keyframes[i].HeldFrames;
-            }
-            ctx->Index++;
-            if(ctx->Index >= MaxIndex) {
-                ctx->Index = 0;
-                ctx->Playing = false;
-            }
-            break;
-        
-        case PLAYMODE_PLAY_ONCE:
-            for (int i = 0; i < ctx->NumKeyframes; i++) {
-                MaxIndex += ctx->Keyframes[i].EasingFrames;
-                MaxIndex += ctx->Keyframes[i].HeldFrames;
-            }
-
-            if(ctx->__Reverse) {
-                ctx->Index--;
-            }
-            else {
-                ctx->Index++;
-            }
-            
-            if(ctx->Index >= MaxIndex) {
-                ctx->Index = MaxIndex - 1;
-            }
-
-            if(ctx->Index <= 0) {
-                ctx->Index = 0;
-            }
-            break;
-
-        case PLAYMODE_BOOMERANG:
-            
-            for (int i = 0; i < ctx->NumKeyframes; i++) {
-                MaxIndex += ctx->Keyframes[i].EasingFrames;
-                MaxIndex += ctx->Keyframes[i].HeldFrames;
-            }
-
-            if(ctx->__Reverse) {
-                ctx->Index--;
-            }
-            else {
-                ctx->Index++;
-            }
-            
-            if(ctx->Index == MaxIndex) {
-                ctx->__Reverse = true;
-            }
-
-            if(ctx->Index == 0) {
-                ctx->__Reverse = false;
-            }
-
-            break;
-
-        default:
-            break;
+        for (int i = 0; i < ctx->NumKeyframes; i++) {
+            MaxIndex += ctx->Keyframes[i].EasingFrames;
+            MaxIndex += ctx->Keyframes[i].HeldFrames;
         }
+        __StepIndex(&ctx->Index, &ctx->Playing, &ctx->__Reverse, MaxIndex, ctx->Mode, ctx->NumKeyframes);
         
     }
 
@@ -235,6 +253,153 @@ Keyframe_Rectangle NewKeyframe_Rectangle(Keyframe_Rectangle k) {
 }
 
 // ===== Rectangle specific ======
+
+// ===== Color specific ======
+
+typedef struct {
+    float r;
+    float g;
+    float b;
+    float a;
+} Color__f;
+
+typedef struct {
+    Color__f Add;
+    Color__f Mult; 
+
+    int EasingFrames;
+    int HeldFrames;
+} Keyframe_Color;
+
+Keyframe_Color NewKeyframe_Color(Keyframe_Color k);
+
+typedef struct {
+    Keyframe_Color* Keyframes;
+    int NumKeyframes;
+    int Index;
+    bool Playing;    
+    bool __Reverse; //might want to cheange this to enum Direction = FORWARD or REVERSE for clarity
+    PlayMode Mode;
+
+    //read-only
+    int __KeyframeIndex;
+    bool __Held;
+    Keyframe_Color __Modification;
+} TransformContext_Color;
+
+Color __ApplyTransform_Color(Keyframe_Color modifier, Color input) {
+    // printf("adding: %f + %f\n", modifier.Add.r, input.r);
+    input = (Color) {modifier.Add.r + input.r, modifier.Add.g + input.g, modifier.Add.b + input.b, modifier.Add.a + input.a};
+
+    //scaling not yet applied -- need to initialize to 1 instead of zero so default doesn't change anything
+    // printf("scaling: %f * %f\n", modifier.Mult.r, input.r);
+    return (Color) {
+        (int) ( modifier.Mult.r * (float) input.r ),
+        (int) ( modifier.Mult.g * (float) input.g ),
+        (int) ( modifier.Mult.b * (float) input.b ),
+        (int) ( modifier.Mult.a * (float) input.a )
+        };
+
+    // and then obviously there will need to be some offsetting when the option to add 
+}
+
+Keyframe_Color __CalculateModifier_Color(TransformContext_Color* ctx) {
+    Keyframe_Color modifier = {0};
+    int cumulative_lower = 0;
+    int cumulative_upper = 0;
+    for(int i = 0; i < ctx->NumKeyframes; i++) {
+
+        //CANT just use frame[i].easingFrames, need to convert into some sort of cumulative index. EX:
+        // {.Easing=10, .held=15}, {.easing=7, held=12}
+        // becomes...
+        // 10, 25, 32, 44
+        // compare(idx, 0, 10), compare(idx, 25, 32)
+
+        cumulative_upper = cumulative_lower + ctx->Keyframes[i].EasingFrames;
+        float easing_index = QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper));
+
+        modifier.Add.r += ( easing_index * (float) ctx->Keyframes[i].Add.r );
+        modifier.Add.g += ( easing_index * (float) ctx->Keyframes[i].Add.g );
+        modifier.Add.b += ( easing_index * (float) ctx->Keyframes[i].Add.b );
+        modifier.Add.a += ( easing_index * (float) ctx->Keyframes[i].Add.a );
+
+        modifier.Mult.r = ( 1 + ( easing_index * (float) (ctx->Keyframes[i].Mult.r - 1)) );
+        modifier.Mult.g = ( 1 + ( easing_index * (float) (ctx->Keyframes[i].Mult.g - 1)) );
+        modifier.Mult.b = ( 1 + ( easing_index * (float) (ctx->Keyframes[i].Mult.b - 1)) );
+        modifier.Mult.a = ( 1 + ( easing_index * (float) (ctx->Keyframes[i].Mult.a - 1)) );
+
+        cumulative_lower += ctx->Keyframes[i].EasingFrames + ctx->Keyframes[i].HeldFrames;
+    }
+
+
+    // return_vector.r = vector.r + (ModFactor * ctx->Keyframes[ctx->__KeyframeIndex].AOffset);
+    // return_vector.r *= (1 + (ModFactor * (ctx->Keyframes[ctx->__KeyframeIndex].AScale - 1)) );
+
+    return modifier;
+}
+
+Color Animate_Color(TransformContext_Color* ctx, Color input) {
+    
+
+    //step through index
+    if(ctx->Playing) {
+        int MaxIndex = 0;
+        for (int i = 0; i < ctx->NumKeyframes; i++) {
+            MaxIndex += ctx->Keyframes[i].EasingFrames;
+            MaxIndex += ctx->Keyframes[i].HeldFrames;
+        }
+        __StepIndex(&ctx->Index, &ctx->Playing, &ctx->__Reverse, MaxIndex, ctx->Mode, ctx->NumKeyframes);
+    }
+
+    //find modification
+    ctx->__Modification = __CalculateModifier_Color(ctx);
+    printf("%f %f\n", ctx->__Modification.Mult.r, ctx->__Modification.Add.r);
+
+    return __ApplyTransform_Color(ctx->__Modification, input);
+}
+
+Keyframe_Color NewKeyframe_Color(Keyframe_Color k) {
+    Keyframe_Color zero_initialized = {0};
+    Keyframe_Color default_keyframe = {
+        .Add.r=0.0f, 
+        .Add.g=0.0f,
+        .Add.b=0.0f,
+        .Add.a=0.0f, 
+        .Mult.r=1.0f,
+        .Mult.g=1.0f,
+        .Mult.b=1.0f,
+        .Mult.a=1.0f, 
+        .EasingFrames=0, 
+        .HeldFrames=0
+        };
+
+    if(k.Add.r == zero_initialized.Add.r) {
+        k.Add.r = default_keyframe.Add.r;
+    }
+    if(k.Add.g == zero_initialized.Add.g) {
+        k.Add.g = default_keyframe.Add.g;
+    }
+    if(k.Add.b == zero_initialized.Add.b) {
+        k.Add.b = default_keyframe.Add.b;
+    }
+    if(k.Add.a == zero_initialized.Add.a) {
+        k.Add.a = default_keyframe.Add.a;
+    }
+    if(k.Mult.r == zero_initialized.Mult.r) {
+        k.Mult.r = default_keyframe.Mult.r;
+    }
+    if(k.Mult.g == zero_initialized.Mult.g) {
+        k.Mult.g = default_keyframe.Mult.g;
+    }
+    if(k.Mult.b == zero_initialized.Mult.b) {
+        k.Mult.b = default_keyframe.Mult.b;
+    }
+    if(k.Mult.a == zero_initialized.Mult.a) {
+        k.Mult.a = default_keyframe.Mult.a;
+    }
+
+    return k;
+}
 
 // Modeled after the piecewise quadratic
 // y = (1/2)((2x)^2)             ; [0, 0.5)

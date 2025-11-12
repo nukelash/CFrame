@@ -42,7 +42,7 @@ int main() {
 
         BeginDrawing();
 
-            ClearBackground(RED);
+            ClearBackground(GRAY);
 
             for (int i = 0; i < num_buttons; i++) {
                 DrawRectangleRec(animated_buttons[i], BLACK);
