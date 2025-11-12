@@ -16,34 +16,32 @@
 
 #include "stdio.h"
 
-#define NEW_KEYFRAME_Rectangle(...) NewKeyframe_Rectangle((Keyframe_Rectangle) __VA_ARGS__)
-#define NEW_KEYFRAME_Color(...) NewKeyframe_Color((Keyframe_Color) __VA_ARGS__)
+#define CF_SetRectangleKeyframe(...) __SetRectangleKeyframe((CF_RectangleKeyframe) __VA_ARGS__)
+#define CF_SetColorKeyframe(...) __SetColorKeyframe((CF_ColorKeyframe) __VA_ARGS__)
 
-#define __USE_RAYLIB true
-#if __USE_RAYLIB
-#define __Vector4_f32 Rectangle
-#define __Vector2_f32 Vector2
-#define __Vector4_i32 Color
-Rectangle __add_Rectangle(Rectangle _1, Rectangle _2) {
-    return (Rectangle){_1.x+_2.x, _1.y+_2.y, _1.width+_2.width, _1.height+_2.height};
-}
-Rectangle __mult_Rectangle(Rectangle _1, Rectangle _2) {
-    return (Rectangle){_1.x*_2.x, _1.y*_2.y, _1.width*_2.width, _1.height*_2.height};
-}
-#endif
+// #define __USE_RAYLIB true
+// #if __USE_RAYLIB
+// #define __Vector4_f32 Rectangle
+// #define __Vector2_f32 Vector2
+// #define __Vector4_i32 Color
+// Rectangle __add_Rectangle(Rectangle _1, Rectangle _2) {
+//     return (Rectangle){_1.x+_2.x, _1.y+_2.y, _1.width+_2.width, _1.height+_2.height};
+// }
+// Rectangle __mult_Rectangle(Rectangle _1, Rectangle _2) {
+//     return (Rectangle){_1.x*_2.x, _1.y*_2.y, _1.width*_2.width, _1.height*_2.height};
+// }
+// #endif
 
 //Define_Keyframe(Rectangle, float);
 float compare(int x, int lower, int upper);
 float QuadraticEaseInOut(float p);
 
 typedef enum {
-    PLAYMODE_PLAY_ONCE,
-    PLAYMODE_LOOP,
-    PLAYMODE_BOOMERANG_ONCE,
-    PLAYMODE_BOOMERANG_LOOP
-
-    //alternatively: PLAY_ONCE, LOOP, BOOMERANG
-} PlayMode;
+    CF_PLAYMODE_ONCE,
+    CF_PLAYMODE_LOOP,
+    CF_PLAYMODE_BOOMERANG_ONCE,
+    CF_PLAYMODE_BOOMERANG_LOOP
+} CF_PlayMode;
 
 typedef struct {
     float _1;
@@ -57,11 +55,11 @@ typedef struct {
     _Vector_4f Mult;
 } Modifier_4f;
 
-void __StepIndex(int* CtxIndex, bool* CtxPlaying, bool* CtxReverse, int MaxIndex, PlayMode CtxPlaymode, int CtxNumKeyframes) {
+void __StepIndex(int* CtxIndex, bool* CtxPlaying, bool* CtxReverse, int MaxIndex, CF_PlayMode CtxPlaymode, int CtxNumKeyframes) {
     
     switch (CtxPlaymode)
     {
-    case PLAYMODE_LOOP:
+    case CF_PLAYMODE_LOOP:
         
         if(*CtxReverse) {
             (*CtxIndex)--;
@@ -73,7 +71,7 @@ void __StepIndex(int* CtxIndex, bool* CtxPlaying, bool* CtxReverse, int MaxIndex
         *CtxIndex = (*CtxIndex) % MaxIndex;
         break;
     
-    case PLAYMODE_PLAY_ONCE:
+    case CF_PLAYMODE_ONCE:
 
         if(*CtxReverse) {
             (*CtxIndex)--;
@@ -91,7 +89,7 @@ void __StepIndex(int* CtxIndex, bool* CtxPlaying, bool* CtxReverse, int MaxIndex
         }
         break;
 
-    case PLAYMODE_BOOMERANG_LOOP:
+    case CF_PLAYMODE_BOOMERANG_LOOP:
 
         if(*CtxReverse) {
             (*CtxIndex)--;
@@ -125,25 +123,25 @@ typedef struct {
 
     int EasingFrames;
     int HeldFrames;
-} Keyframe_Rectangle;
+} CF_RectangleKeyframe;
 
-Keyframe_Rectangle NewKeyframe_Rectangle(Keyframe_Rectangle k);
+CF_RectangleKeyframe __SetRectangleKeyframe(CF_RectangleKeyframe k);
 
 typedef struct {
-    Keyframe_Rectangle* Keyframes;
+    CF_RectangleKeyframe* Keyframes;
     int NumKeyframes;
     int Index;
     bool Playing;    
     bool __Reverse; //might want to cheange this to enum Direction = FORWARD or REVERSE for clarity
-    PlayMode Mode;
+    CF_PlayMode Mode;
 
     //read-only
     int __KeyframeIndex;
     bool __Held;
-    Keyframe_Rectangle __Modification;
-} TransformContext_Rectangle;
+    CF_RectangleKeyframe __Modification;
+} CF_RectangleContext;
 
-Rectangle __ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle input) {
+Rectangle __ApplyTransform_Rectangle(CF_RectangleKeyframe modifier, Rectangle input) {
     // printf("adding: %f + %f\n", modifier.Add.x, input.x);
     input = (Rectangle) {modifier.Add.x + input.x, modifier.Add.y + input.y, modifier.Add.width + input.width, modifier.Add.height + input.height};
 
@@ -154,8 +152,8 @@ Rectangle __ApplyTransform_Rectangle(Keyframe_Rectangle modifier, Rectangle inpu
     // and then obviously there will need to be some offsetting when the option to add 
 }
 
-Keyframe_Rectangle __CalculateModifier_Rectangle(TransformContext_Rectangle* ctx) {
-    Keyframe_Rectangle modifier = NEW_KEYFRAME_Rectangle({});
+CF_RectangleKeyframe __CalculateModifier_Rectangle(CF_RectangleContext* ctx) {
+    CF_RectangleKeyframe modifier = CF_SetRectangleKeyframe({});
     int cumulative_lower = 0;
     int cumulative_upper = 0;
     for(int i = 0; i < ctx->NumKeyframes; i++) {
@@ -190,7 +188,7 @@ Keyframe_Rectangle __CalculateModifier_Rectangle(TransformContext_Rectangle* ctx
     return modifier;
 }
 
-Rectangle Animate_Rectangle(TransformContext_Rectangle* ctx, Rectangle input) {
+Rectangle CF_RectangleProcess(CF_RectangleContext* ctx, Rectangle input) {
 
     //step through index
     if(ctx->Playing) {
@@ -209,9 +207,9 @@ Rectangle Animate_Rectangle(TransformContext_Rectangle* ctx, Rectangle input) {
     return __ApplyTransform_Rectangle(ctx->__Modification, input);
 }
 
-Keyframe_Rectangle NewKeyframe_Rectangle(Keyframe_Rectangle k) {
-    Keyframe_Rectangle zero_initialized = {0};
-    Keyframe_Rectangle default_keyframe = {
+CF_RectangleKeyframe __SetRectangleKeyframe(CF_RectangleKeyframe k) {
+    CF_RectangleKeyframe zero_initialized = {0};
+    CF_RectangleKeyframe default_keyframe = {
         .Add.x=0.0f, 
         .Add.y=0.0f,
         .Add.width=0.0f,
@@ -261,33 +259,33 @@ typedef struct {
     float g;
     float b;
     float a;
-} Color__f;
+} CF__Color_float;
 
 typedef struct {
-    Color__f Add;
-    Color__f Mult; 
+    CF__Color_float Add;
+    CF__Color_float Mult; 
 
     int EasingFrames;
     int HeldFrames;
-} Keyframe_Color;
+} CF_ColorKeyframe;
 
-Keyframe_Color NewKeyframe_Color(Keyframe_Color k);
+CF_ColorKeyframe __SetColorKeyframe(CF_ColorKeyframe k);
 
 typedef struct {
-    Keyframe_Color* Keyframes;
+    CF_ColorKeyframe* Keyframes;
     int NumKeyframes;
     int Index;
     bool Playing;    
     bool __Reverse; //might want to cheange this to enum Direction = FORWARD or REVERSE for clarity
-    PlayMode Mode;
+    CF_PlayMode Mode;
 
     //read-only
     int __KeyframeIndex;
     bool __Held;
-    Keyframe_Color __Modification;
+    CF_ColorKeyframe __Modification;
 } TransformContext_Color;
 
-Color __ApplyTransform_Color(Keyframe_Color modifier, Color input) {
+Color __ApplyTransform_Color(CF_ColorKeyframe modifier, Color input) {
     // printf("adding: %f + %f\n", modifier.Add.r, input.r);
     input = (Color) {modifier.Add.r + input.r, modifier.Add.g + input.g, modifier.Add.b + input.b, modifier.Add.a + input.a};
 
@@ -303,8 +301,8 @@ Color __ApplyTransform_Color(Keyframe_Color modifier, Color input) {
     // and then obviously there will need to be some offsetting when the option to add 
 }
 
-Keyframe_Color __CalculateModifier_Color(TransformContext_Color* ctx) {
-    Keyframe_Color modifier = {0};
+CF_ColorKeyframe __CalculateModifier_Color(TransformContext_Color* ctx) {
+    CF_ColorKeyframe modifier = {0};
     int cumulative_lower = 0;
     int cumulative_upper = 0;
     for(int i = 0; i < ctx->NumKeyframes; i++) {
@@ -338,7 +336,7 @@ Keyframe_Color __CalculateModifier_Color(TransformContext_Color* ctx) {
     return modifier;
 }
 
-Color Animate_Color(TransformContext_Color* ctx, Color input) {
+Color CF_ColorProcess(TransformContext_Color* ctx, Color input) {
     
 
     //step through index
@@ -353,14 +351,14 @@ Color Animate_Color(TransformContext_Color* ctx, Color input) {
 
     //find modification
     ctx->__Modification = __CalculateModifier_Color(ctx);
-    printf("%f %f\n", ctx->__Modification.Mult.r, ctx->__Modification.Add.r);
+    //printf("%f %f\n", ctx->__Modification.Mult.r, ctx->__Modification.Add.r);
 
     return __ApplyTransform_Color(ctx->__Modification, input);
 }
 
-Keyframe_Color NewKeyframe_Color(Keyframe_Color k) {
-    Keyframe_Color zero_initialized = {0};
-    Keyframe_Color default_keyframe = {
+CF_ColorKeyframe __SetColorKeyframe(CF_ColorKeyframe k) {
+    CF_ColorKeyframe zero_initialized = {0};
+    CF_ColorKeyframe default_keyframe = {
         .Add.r=0.0f, 
         .Add.g=0.0f,
         .Add.b=0.0f,
@@ -443,6 +441,41 @@ float BounceEaseOut(float p)
 /*
 
 sketch
+
+CFrame, CFramer, CKey, CEasing, CEase, CEaser (taken)
+
+Macros:
+CF_SetRectangleKeyframe
+CF_SetColorKeyframe
+
+Structs:
+CF_RectangleKeyframe
+CF_ColorKeyframe
+CF_RectangleContext
+CF_ColorContext
+
+enums:
+CF_PlayMode {CF_PLAYMODE_ONCE, CF_PLAYMODE_LOOP}
+CF_Direction {CF_DIRECTION_FORWARDS, CF_DIRECTION_BACKWARDS}
+
+Functions:
+CF_RectangleProcess
+CF_ColorProcess
+
+Ex:
+CF_RectangleKeyframe keyframes[3] = {
+    CF_SetRectangleKeyframe( { etc..} ),
+    CF_SetRectangleKeyframe( { etc..} )
+}
+
+CF_RectangleContext context = {
+    .Keyframes = keyframes,
+    .NumKeyframes = 2;
+    .Mode = CF_PLAYMODE_ONCE
+}
+
+Rectangle animated_rec = CF_RectangleProcess(&context, rec);
+
 
 #define KF(...) initKF(...)
 

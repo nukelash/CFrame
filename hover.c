@@ -11,16 +11,16 @@ int main() {
 
     Rectangle buttons[num_buttons];
     Rectangle animated_buttons[num_buttons];
-    Keyframe_Rectangle hover_keyframe = NEW_KEYFRAME_Rectangle({
+    CF_RectangleKeyframe hover_keyframe = CF_SetRectangleKeyframe({
         .Add.x=-2, 
         .Add.y=2, 
         .EasingFrames=5
         });
-    TransformContext_Rectangle ctx[num_buttons];
+    CF_RectangleContext ctx[num_buttons];
 
     for (int i = 0; i < num_buttons; i++) {
         buttons[i] = (Rectangle) {50.0f + (70.0f*i), 40, 50, 50};
-        ctx[i] = (TransformContext_Rectangle){
+        ctx[i] = (CF_RectangleContext){
             .Keyframes = &hover_keyframe,
             .NumKeyframes = 1,
             .Playing = true
@@ -31,7 +31,7 @@ int main() {
 
         Vector2 mouse_position = GetMousePosition();
         for (int i = 0; i < num_buttons; i++) {
-            animated_buttons[i] = Animate_Rectangle(&ctx[i], buttons[i]);
+            animated_buttons[i] = CF_RectangleProcess(&ctx[i], buttons[i]);
             if (!CheckCollisionPointRec(mouse_position, animated_buttons[i])) {
                 ctx[i].__Reverse = true;
             }
