@@ -15,6 +15,7 @@
 //     }\
 
 #include "stdio.h"
+#include "raylib.h"
 
 #define CF_SetRectangleKeyframe(...) __SetRectangleKeyframe((CF_RectangleKeyframe) __VA_ARGS__)
 #define CF_SetColorKeyframe(...) __SetColorKeyframe((CF_ColorKeyframe) __VA_ARGS__)
@@ -85,6 +86,24 @@ void __StepIndex(int* CtxIndex, bool* CtxPlaying, bool* CtxReverse, int MaxIndex
         }
 
         if(*CtxIndex <= 0) {
+            *CtxIndex = 0;
+        }
+        break;
+    
+    case CF_PLAYMODE_BOOMERANG_ONCE:
+
+        if(*CtxReverse) {
+            (*CtxIndex)--;
+        }
+        else {
+            (*CtxIndex)++;
+        }
+        
+        if(*CtxIndex == MaxIndex) {
+            *CtxReverse = true;
+        }
+
+        if(*CtxIndex < 0) {
             *CtxIndex = 0;
         }
         break;
@@ -283,7 +302,7 @@ typedef struct {
     int __KeyframeIndex;
     bool __Held;
     CF_ColorKeyframe __Modification;
-} TransformContext_Color;
+} CF_ColorContext;
 
 Color __ApplyTransform_Color(CF_ColorKeyframe modifier, Color input) {
     // printf("adding: %f + %f\n", modifier.Add.r, input.r);
@@ -301,7 +320,7 @@ Color __ApplyTransform_Color(CF_ColorKeyframe modifier, Color input) {
     // and then obviously there will need to be some offsetting when the option to add 
 }
 
-CF_ColorKeyframe __CalculateModifier_Color(TransformContext_Color* ctx) {
+CF_ColorKeyframe __CalculateModifier_Color(CF_ColorContext* ctx) {
     CF_ColorKeyframe modifier = {0};
     int cumulative_lower = 0;
     int cumulative_upper = 0;
@@ -336,7 +355,7 @@ CF_ColorKeyframe __CalculateModifier_Color(TransformContext_Color* ctx) {
     return modifier;
 }
 
-Color CF_ColorProcess(TransformContext_Color* ctx, Color input) {
+Color CF_ColorProcess(CF_ColorContext* ctx, Color input) {
     
 
     //step through index

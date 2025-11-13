@@ -1,7 +1,7 @@
 #include "stdio.h"
 
 #include "raylib.h"
-#include "ckey.h"
+#include "cframe.h"
 
 int main() {
 
@@ -23,7 +23,7 @@ int main() {
         .Add.b=255, 
         .EasingFrames=80})
     };
-    TransformContext_Color ctx_color = {
+    CF_ColorContext ctx_color = {
         .Keyframes=color_frames,
         .NumKeyframes=2,
         .Mode=CF_PLAYMODE_LOOP

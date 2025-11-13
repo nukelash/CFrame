@@ -30,3 +30,16 @@ if(APPLE)
                    "-framework OpenGL")
     target_link_libraries(hover PUBLIC ${FRAMEWORKS})
 endif()
+
+add_executable(playmodes examples/playmodes.c)
+include_directories(playmodes ${CMAKE_SOURCE_DIR}/dep/raylib/include)
+target_link_libraries(playmodes PUBLIC ${CMAKE_SOURCE_DIR}/dep/raylib/lib/libraylib.a)
+
+if(APPLE)
+    set(FRAMEWORKS "-framework CoreVideo"
+                   "-framework IOKit" 
+                   "-framework Cocoa"
+                   "-framework GLUT" 
+                   "-framework OpenGL")
+    target_link_libraries(playmodes PUBLIC ${FRAMEWORKS})
+endif()
