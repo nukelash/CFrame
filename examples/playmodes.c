@@ -33,10 +33,10 @@ int main() {
     };
 
     // Set up initial Rectangles
-    Rectangle rec_once = {250, 100, 60, 60};
-    Rectangle rec_loop = {250, 200, 60, 60};
-    Rectangle rec_boomerang = {250, 300, 60, 60};
-    Rectangle rec_boomerang_loop = {250, 400, 60, 60};
+    Rectangle rec_once = {250, 80, 60, 60};
+    Rectangle rec_loop = {250, 180, 60, 60};
+    Rectangle rec_boomerang = {250, 280, 60, 60};
+    Rectangle rec_boomerang_loop = {250, 380, 60, 60};
     bool play = false;
 
     while(!WindowShouldClose()) {
@@ -74,7 +74,7 @@ int main() {
 
         BeginDrawing();
 
-            ClearBackground(GRAY);
+            ClearBackground(LIGHTGRAY);
 
             DrawText("P to Play/Pause, R to Reset", 300, 550, 20, BLACK);
 

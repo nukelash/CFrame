@@ -1,25 +1,26 @@
 #include "raylib.h"
-#include "cframe.h"
-#include "stdio.h"
+#include "../cframe.h"
 
 int num_buttons = 5;
 
 int main() {
 
-    InitWindow(680, 400, "Hover");
+    InitWindow(530, 250, "Hover");
     SetTargetFPS(60);
 
     Rectangle buttons[num_buttons];
     Rectangle animated_buttons[num_buttons];
     CF_RectangleKeyframe hover_keyframe = CF_SetRectangleKeyframe({
-        .Add.x=-2, 
-        .Add.y=2, 
+        .Add.x=-4, 
+        .Add.y=-4,
+        .Add.width=8,
+        .Add.height=8,
         .EasingFrames=5
         });
     CF_RectangleContext ctx[num_buttons];
 
     for (int i = 0; i < num_buttons; i++) {
-        buttons[i] = (Rectangle) {50.0f + (70.0f*i), 40, 50, 50};
+        buttons[i] = (Rectangle) {100.0f + (70.0f*i), 80, 50, 50};
         ctx[i] = (CF_RectangleContext){
             .Keyframes = &hover_keyframe,
             .NumKeyframes = 1,
