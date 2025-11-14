@@ -17,6 +17,141 @@
 #include "stdio.h"
 #include "raylib.h"
 
+
+//a genereic CF__DEFINE which gets called after the struct has been created
+#define CF_DEFINE_4(struct_name, type, _1, _2, _3, _4) \
+    typedef struct { \
+        float _1;\
+        float _2;\
+        float _3;\
+        float _4;\
+    } CF__##struct_name##f;\
+    \
+    typedef struct {\
+        CF__##struct_name##f Add;\
+        CF__##struct_name##f Mult; \
+        int EasingFrames;\
+        int HeldFrames;\
+    } CF_##struct_name##Keyframe;\
+    typedef struct {\
+        float Add[4];\
+        float Mult[4];\
+    } CF__##struct_name##Modifier;\
+    void __##struct_name##fToArray(CF__##struct_name##f orig, float* arr) {\
+        arr[0] = orig._1;\
+        arr[1] = orig._2;\
+        arr[2] = orig._3;\
+        arr[3] = orig._4;\
+        return;\
+    }\
+    CF__##struct_name##f __ArrayTo##struct_name##f(float* arr) {\
+        return (CF__##struct_name##f) {._1 = arr[0], ._2 = arr[1], ._3 = arr[2], ._4 = arr[3]};\
+    }\
+    CF__##struct_name##f __##struct_name##To##struct_name##f(struct_name orig) {\
+        return (CF__##struct_name##f) {orig._1, orig._2, orig._3, orig._4};\
+    }\
+    struct_name __##struct_name##fTo##struct_name(CF__##struct_name##f orig) {\
+        return (struct_name) {._1 = orig._1, ._2 = orig._2, ._3 = orig._3, ._4 = orig._4};\
+    }\
+    CF_##struct_name##Keyframe __Set##struct_name##Keyframe(CF_##struct_name##Keyframe k);\
+    typedef struct {\
+        CF_##struct_name##Keyframe* Keyframes;\
+        int NumKeyframes;\
+        int Index;\
+        bool Playing;\
+        bool __Reverse;\
+        CF_PlayMode Mode;\
+        int __KeyframeIndex;\
+        bool __Held;\
+        CF__##struct_name##Modifier __Modification;\
+    } CF_##struct_name##Context;\
+    struct_name __ApplyTransform_##struct_name(CF__##struct_name##Modifier modifier, struct_name input) {\
+        float input_arr[4];\
+        float output_arr[4];\
+        __##struct_name##fToArray(__##struct_name##To##struct_name##f(input), input_arr);\
+        for (int i = 0; i < 4; i++) {\
+            output_arr[i] = modifier.Add[i] + input_arr[i];\
+            output_arr[i] = modifier.Mult[i] * output_arr[i];\
+        }\
+        return __##struct_name##fTo##struct_name(__ArrayTo##struct_name##f(output_arr));\
+    }\
+    CF__##struct_name##Modifier __CalculateModifier_##struct_name(CF_##struct_name##Context* ctx) {\
+        CF__##struct_name##Modifier modifier = {0};\
+        int cumulative_lower = 0;\
+        int cumulative_upper = 0;\
+        for(int i = 0; i < ctx->NumKeyframes; i++) {\
+            cumulative_upper = cumulative_lower + ctx->Keyframes[i].EasingFrames;\
+            float easing_index = QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper));\
+            float struct_name##_array[4];\
+            __##struct_name##fToArray(ctx->Keyframes[i].Add, struct_name##_array);\
+            modifier.Add[0] += ( easing_index * struct_name##_array[0] );\
+            modifier.Add[1] += ( easing_index * struct_name##_array[1] );\
+            modifier.Add[2] += ( easing_index * struct_name##_array[2] );\
+            modifier.Add[3] += ( easing_index * struct_name##_array[3] );\
+            __##struct_name##fToArray(ctx->Keyframes[i].Mult, struct_name##_array);\
+            modifier.Mult[0] = ( 1 + ( easing_index * (float) (struct_name##_array[0] - 1)) );\
+            modifier.Mult[1] = ( 1 + ( easing_index * (float) (struct_name##_array[1] - 1)) );\
+            modifier.Mult[2] = ( 1 + ( easing_index * (float) (struct_name##_array[2] - 1)) );\
+            modifier.Mult[3] = ( 1 + ( easing_index * (float) (struct_name##_array[3] - 1)) );\
+            cumulative_lower += ctx->Keyframes[i].EasingFrames + ctx->Keyframes[i].HeldFrames;\
+        }\
+        return modifier;\
+    }\
+    struct_name CF_##struct_name##Process(CF_##struct_name##Context* ctx, struct_name input) {\
+        if(ctx->Playing) {\
+            int MaxIndex = 0;\
+            for (int i = 0; i < ctx->NumKeyframes; i++) {\
+                MaxIndex += ctx->Keyframes[i].EasingFrames;\
+                MaxIndex += ctx->Keyframes[i].HeldFrames;\
+            }\
+            __StepIndex(&ctx->Index, &ctx->Playing, &ctx->__Reverse, MaxIndex, ctx->Mode, ctx->NumKeyframes);\
+        }\
+        ctx->__Modification = __CalculateModifier_##struct_name(ctx);\
+        return __ApplyTransform_##struct_name(ctx->__Modification, input);\
+    }\
+    CF_##struct_name##Keyframe __Set##struct_name##Keyframe(CF_##struct_name##Keyframe k) {\
+        CF_##struct_name##Keyframe zero_initialized = {0};\
+        CF_##struct_name##Keyframe default_keyframe = {\
+            .Add._1=0.0f, \
+            .Add._2=0.0f,\
+            .Add._3=0.0f,\
+            .Add._4=0.0f, \
+            .Mult._1=1.0f,\
+            .Mult._2=1.0f,\
+            .Mult._3=1.0f,\
+            .Mult._4=1.0f, \
+            .EasingFrames=0,\
+            .HeldFrames=0\
+            };\
+        if(k.Add._1 == zero_initialized.Add._1) {\
+            k.Add._1 = default_keyframe.Add._1;\
+        }\
+        if(k.Add._2 == zero_initialized.Add._2) {\
+            k.Add._2 = default_keyframe.Add._2;\
+        }\
+        if(k.Add._3 == zero_initialized.Add._3) {\
+            k.Add._3 = default_keyframe.Add._3;\
+        }\
+        if(k.Add._4 == zero_initialized.Add._4) {\
+            k.Add._4 = default_keyframe.Add._4;\
+        }\
+        if(k.Mult._1 == zero_initialized.Mult._1) {\
+            k.Mult._1 = default_keyframe.Mult._1;\
+        }\
+        if(k.Mult._2 == zero_initialized.Mult._2) {\
+            k.Mult._2 = default_keyframe.Mult._2;\
+        }\
+        if(k.Mult._3 == zero_initialized.Mult._3) {\
+            k.Mult._3 = default_keyframe.Mult._3;\
+        }\
+        if(k.Mult._4 == zero_initialized.Mult._4) {\
+            k.Mult._4 = default_keyframe.Mult._4;\
+        }\
+        return k;\
+    }\
+// Then __CalculateModifier can be identical for all length structs.
+
+
 #define CF_SetRectangleKeyframe(...) __SetRectangleKeyframe((CF_RectangleKeyframe) __VA_ARGS__)
 #define CF_SetColorKeyframe(...) __SetColorKeyframe((CF_ColorKeyframe) __VA_ARGS__)
 
@@ -133,8 +268,12 @@ void __StepIndex(int* CtxIndex, bool* CtxPlaying, bool* CtxReverse, int MaxIndex
 
 }
 
-// ===== Rectangle specific ======
+//CF_DEFINE_4(Color, int);
+CF_DEFINE_4(Color, int, r, g, b, a);
+CF_DEFINE_4(Rectangle, float, x, y, width, height);
 
+// ===== Rectangle specific ======
+/*
 typedef struct {
     Rectangle Add;
     Rectangle Mult;
@@ -268,9 +407,11 @@ CF_RectangleKeyframe __SetRectangleKeyframe(CF_RectangleKeyframe k) {
 
     return k;
 }
+*/
 
 // ===== Rectangle specific ======
 
+/*
 // ===== Color specific ======
 
 typedef struct {
@@ -288,6 +429,31 @@ typedef struct {
     int HeldFrames;
 } CF_ColorKeyframe;
 
+typedef struct {
+    float Add[4];
+    float Mult[4];
+} CF__ColorModifier;
+
+void __ColorfToArray(CF__Color_float color, float* arr) {
+    arr[0] = color.r;
+    arr[1] = color.g;
+    arr[2] = color.b;
+    arr[3] = color.a;
+    return;
+}
+
+CF__Color_float __ArrayToColorf(float* arr) {
+    return (CF__Color_float) {.r = arr[0], .g = arr[1], .b = arr[2], .a = arr[3]};
+}
+
+CF__Color_float __ColorToColorf(Color color) {
+    return (CF__Color_float) {color.r, color.g, color.b, color.a};
+}
+
+Color __ColorfToColor(CF__Color_float color_float) {
+    return (Color) {.r = color_float.r, .g = color_float.g, .b = color_float.b, .a = color_float.a}; // maybe cast here?
+}
+
 CF_ColorKeyframe __SetColorKeyframe(CF_ColorKeyframe k);
 
 typedef struct {
@@ -301,27 +467,40 @@ typedef struct {
     //read-only
     int __KeyframeIndex;
     bool __Held;
-    CF_ColorKeyframe __Modification;
+    CF__ColorModifier __Modification;
 } CF_ColorContext;
 
-Color __ApplyTransform_Color(CF_ColorKeyframe modifier, Color input) {
+Color __ApplyTransform_Color(CF__ColorModifier modifier, Color input) {
     // printf("adding: %f + %f\n", modifier.Add.r, input.r);
-    input = (Color) {modifier.Add.r + input.r, modifier.Add.g + input.g, modifier.Add.b + input.b, modifier.Add.a + input.a};
+    float input_arr[4];
+    float output_arr[4];
+    __ColorfToArray(__ColorToColorf(input), input_arr);
+
+    for (int i = 0; i < 4; i++) {
+        output_arr[i] = modifier.Add[i] + input_arr[i];
+        output_arr[i] = modifier.Mult[i] * output_arr[i];
+    }
+
+    return __ColorfToColor(__ArrayToColorf(output_arr));
+    
+
+    
+    //input = (Color) {modifier.Add.r + input.r, modifier.Add.g + input.g, modifier.Add.b + input.b, modifier.Add.a + input.a};
 
     //scaling not yet applied -- need to initialize to 1 instead of zero so default doesn't change anything
     // printf("scaling: %f * %f\n", modifier.Mult.r, input.r);
-    return (Color) {
-        (int) ( modifier.Mult.r * (float) input.r ),
-        (int) ( modifier.Mult.g * (float) input.g ),
-        (int) ( modifier.Mult.b * (float) input.b ),
-        (int) ( modifier.Mult.a * (float) input.a )
-        };
+    // return (Color) {
+    //     (int) ( modifier.Mult.r * (float) input.r ),
+    //     (int) ( modifier.Mult.g * (float) input.g ),
+    //     (int) ( modifier.Mult.b * (float) input.b ),
+    //     (int) ( modifier.Mult.a * (float) input.a )
+    //     };
 
     // and then obviously there will need to be some offsetting when the option to add 
 }
 
-CF_ColorKeyframe __CalculateModifier_Color(CF_ColorContext* ctx) {
-    CF_ColorKeyframe modifier = {0};
+CF__ColorModifier __CalculateModifier_Color(CF_ColorContext* ctx) {
+    CF__ColorModifier modifier = {0};
     int cumulative_lower = 0;
     int cumulative_upper = 0;
     for(int i = 0; i < ctx->NumKeyframes; i++) {
@@ -335,15 +514,20 @@ CF_ColorKeyframe __CalculateModifier_Color(CF_ColorContext* ctx) {
         cumulative_upper = cumulative_lower + ctx->Keyframes[i].EasingFrames;
         float easing_index = QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper));
 
-        modifier.Add.r += ( easing_index * (float) ctx->Keyframes[i].Add.r );
-        modifier.Add.g += ( easing_index * (float) ctx->Keyframes[i].Add.g );
-        modifier.Add.b += ( easing_index * (float) ctx->Keyframes[i].Add.b );
-        modifier.Add.a += ( easing_index * (float) ctx->Keyframes[i].Add.a );
+        float color_array[4];
+        __ColorfToArray(ctx->Keyframes[i].Add, color_array);
 
-        modifier.Mult.r = ( 1 + ( easing_index * (float) (ctx->Keyframes[i].Mult.r - 1)) );
-        modifier.Mult.g = ( 1 + ( easing_index * (float) (ctx->Keyframes[i].Mult.g - 1)) );
-        modifier.Mult.b = ( 1 + ( easing_index * (float) (ctx->Keyframes[i].Mult.b - 1)) );
-        modifier.Mult.a = ( 1 + ( easing_index * (float) (ctx->Keyframes[i].Mult.a - 1)) );
+        modifier.Add[0] += ( easing_index * color_array[0] );
+        modifier.Add[1] += ( easing_index * color_array[1] );
+        modifier.Add[2] += ( easing_index * color_array[2] );
+        modifier.Add[3] += ( easing_index * color_array[3] );
+
+        __ColorfToArray(ctx->Keyframes[i].Mult, color_array);
+
+        modifier.Mult[0] = ( 1 + ( easing_index * (float) (color_array[0] - 1)) );
+        modifier.Mult[1] = ( 1 + ( easing_index * (float) (color_array[1] - 1)) );
+        modifier.Mult[2] = ( 1 + ( easing_index * (float) (color_array[2] - 1)) );
+        modifier.Mult[3] = ( 1 + ( easing_index * (float) (color_array[3] - 1)) );
 
         cumulative_lower += ctx->Keyframes[i].EasingFrames + ctx->Keyframes[i].HeldFrames;
     }
@@ -417,6 +601,7 @@ CF_ColorKeyframe __SetColorKeyframe(CF_ColorKeyframe k) {
 
     return k;
 }
+*/
 
 // Modeled after the piecewise quadratic
 // y = (1/2)((2x)^2)             ; [0, 0.5)
