@@ -35,6 +35,19 @@ BeginDrawing();
 EndDrawing();
 ```
 
+#
+## API
+The API is designed to be dead simple, with only 2 structs and 2 functions per keyframe-able struct:
+
+
+### struct CF_*Keyframe;
+### CF_Set*Keyframe();
+### struct CF_*Context;
+### CF_*Process();
+
+#
+
+
 Build:
 ```
 cmake -DCMAKE_BUILD_TYPE=DEBUG -S . -B build

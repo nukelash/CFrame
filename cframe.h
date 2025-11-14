@@ -19,14 +19,13 @@
 
 
 //a genereic CF__DEFINE which gets called after the struct has been created
-#define CF_DEFINE_4(struct_name, type, _1, _2, _3, _4) \
-    typedef struct { \
-        float _1;\
-        float _2;\
-        float _3;\
-        float _4;\
-    } CF__##struct_name##f;\
-    \
+//#define CF_DEFINE_2()
+/*
+CF_DEFINE_x(struct_name, type, terms(x))
+__CF_DEFINE_COMMON(struct_name, type, num)
+*/
+
+#define __CF_DEFINE_COMMON(struct_name, type, num)\
     typedef struct {\
         CF__##struct_name##f Add;\
         CF__##struct_name##f Mult; \
@@ -34,25 +33,9 @@
         int HeldFrames;\
     } CF_##struct_name##Keyframe;\
     typedef struct {\
-        float Add[4];\
-        float Mult[4];\
+        float Add[num];\
+        float Mult[num];\
     } CF__##struct_name##Modifier;\
-    void __##struct_name##fToArray(CF__##struct_name##f orig, float* arr) {\
-        arr[0] = orig._1;\
-        arr[1] = orig._2;\
-        arr[2] = orig._3;\
-        arr[3] = orig._4;\
-        return;\
-    }\
-    CF__##struct_name##f __ArrayTo##struct_name##f(float* arr) {\
-        return (CF__##struct_name##f) {._1 = arr[0], ._2 = arr[1], ._3 = arr[2], ._4 = arr[3]};\
-    }\
-    CF__##struct_name##f __##struct_name##To##struct_name##f(struct_name orig) {\
-        return (CF__##struct_name##f) {orig._1, orig._2, orig._3, orig._4};\
-    }\
-    struct_name __##struct_name##fTo##struct_name(CF__##struct_name##f orig) {\
-        return (struct_name) {._1 = orig._1, ._2 = orig._2, ._3 = orig._3, ._4 = orig._4};\
-    }\
     CF_##struct_name##Keyframe __Set##struct_name##Keyframe(CF_##struct_name##Keyframe k);\
     typedef struct {\
         CF_##struct_name##Keyframe* Keyframes;\
@@ -66,10 +49,10 @@
         CF__##struct_name##Modifier __Modification;\
     } CF_##struct_name##Context;\
     struct_name __ApplyTransform_##struct_name(CF__##struct_name##Modifier modifier, struct_name input) {\
-        float input_arr[4];\
-        float output_arr[4];\
+        float input_arr[num];\
+        float output_arr[num];\
         __##struct_name##fToArray(__##struct_name##To##struct_name##f(input), input_arr);\
-        for (int i = 0; i < 4; i++) {\
+        for (int i = 0; i < num; i++) {\
             output_arr[i] = modifier.Add[i] + input_arr[i];\
             output_arr[i] = modifier.Mult[i] * output_arr[i];\
         }\
@@ -82,17 +65,15 @@
         for(int i = 0; i < ctx->NumKeyframes; i++) {\
             cumulative_upper = cumulative_lower + ctx->Keyframes[i].EasingFrames;\
             float easing_index = QuadraticEaseInOut(compare(ctx->Index, cumulative_lower, cumulative_upper));\
-            float struct_name##_array[4];\
+            float struct_name##_array[num];\
             __##struct_name##fToArray(ctx->Keyframes[i].Add, struct_name##_array);\
-            modifier.Add[0] += ( easing_index * struct_name##_array[0] );\
-            modifier.Add[1] += ( easing_index * struct_name##_array[1] );\
-            modifier.Add[2] += ( easing_index * struct_name##_array[2] );\
-            modifier.Add[3] += ( easing_index * struct_name##_array[3] );\
+            for (int j = 0; j < num; j++) {\
+                modifier.Add[j] += ( easing_index * struct_name##_array[j] );\
+            }\
             __##struct_name##fToArray(ctx->Keyframes[i].Mult, struct_name##_array);\
-            modifier.Mult[0] = ( 1 + ( easing_index * (float) (struct_name##_array[0] - 1)) );\
-            modifier.Mult[1] = ( 1 + ( easing_index * (float) (struct_name##_array[1] - 1)) );\
-            modifier.Mult[2] = ( 1 + ( easing_index * (float) (struct_name##_array[2] - 1)) );\
-            modifier.Mult[3] = ( 1 + ( easing_index * (float) (struct_name##_array[3] - 1)) );\
+            for (int j = 0;j < num; j++) {\
+                modifier.Mult[j] = ( 1 + ( easing_index * (float) (struct_name##_array[j] - 1)) );\
+            }\
             cumulative_lower += ctx->Keyframes[i].EasingFrames + ctx->Keyframes[i].HeldFrames;\
         }\
         return modifier;\
@@ -109,6 +90,32 @@
         ctx->__Modification = __CalculateModifier_##struct_name(ctx);\
         return __ApplyTransform_##struct_name(ctx->__Modification, input);\
     }\
+
+#define CF_DEFINE_4(struct_name, type, _1, _2, _3, _4) \
+    typedef struct { \
+        float _1;\
+        float _2;\
+        float _3;\
+        float _4;\
+    } CF__##struct_name##f;\
+    \
+    void __##struct_name##fToArray(CF__##struct_name##f orig, float* arr) {\
+        arr[0] = orig._1;\
+        arr[1] = orig._2;\
+        arr[2] = orig._3;\
+        arr[3] = orig._4;\
+        return;\
+    }\
+    CF__##struct_name##f __ArrayTo##struct_name##f(float* arr) {\
+        return (CF__##struct_name##f) {._1 = arr[0], ._2 = arr[1], ._3 = arr[2], ._4 = arr[3]};\
+    }\
+    CF__##struct_name##f __##struct_name##To##struct_name##f(struct_name orig) {\
+        return (CF__##struct_name##f) {orig._1, orig._2, orig._3, orig._4};\
+    }\
+    struct_name __##struct_name##fTo##struct_name(CF__##struct_name##f orig) {\
+        return (struct_name) {._1 = orig._1, ._2 = orig._2, ._3 = orig._3, ._4 = orig._4};\
+    }\
+    __CF_DEFINE_COMMON(struct_name, type, 4)\
     CF_##struct_name##Keyframe __Set##struct_name##Keyframe(CF_##struct_name##Keyframe k) {\
         CF_##struct_name##Keyframe zero_initialized = {0};\
         CF_##struct_name##Keyframe default_keyframe = {\
@@ -149,6 +156,7 @@
         }\
         return k;\
     }\
+    
 // Then __CalculateModifier can be identical for all length structs.
 
 
