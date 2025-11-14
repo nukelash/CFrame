@@ -6,7 +6,7 @@ int main() {
     SetTargetFPS(60);
 
     // Set up keyframe and contexts
-    CF_RectangleKeyframe keyframe = CF_SetRectangleKeyframe({.Add.x=400, .EasingFrames=60, .HeldFrames=10});
+    CF_RectangleKeyframe keyframe = CF_InitRectangleKeyframe((CF_RectangleKeyframe) {.Add.x=400, .EasingFrames=60, .HeldFrames=10});
 
     CF_RectangleContext ctx_once = {
         .Keyframes = &keyframe,

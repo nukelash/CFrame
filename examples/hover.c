@@ -10,7 +10,7 @@ int main() {
 
     Rectangle buttons[num_buttons];
     Rectangle animated_buttons[num_buttons];
-    CF_RectangleKeyframe hover_keyframe = CF_SetRectangleKeyframe({
+    CF_RectangleKeyframe hover_keyframe = CF_InitRectangleKeyframe((CF_RectangleKeyframe){
         .Add.x=-4, 
         .Add.y=-4,
         .Add.width=8,

@@ -116,7 +116,7 @@ __CF_DEFINE_COMMON(struct_name, type, num)
         return (struct_name) {._1 = orig._1, ._2 = orig._2, ._3 = orig._3, ._4 = orig._4};\
     }\
     __CF_DEFINE_COMMON(struct_name, type, 4)\
-    CF_##struct_name##Keyframe __Set##struct_name##Keyframe(CF_##struct_name##Keyframe k) {\
+    CF_##struct_name##Keyframe CF_Init##struct_name##Keyframe(CF_##struct_name##Keyframe k) {\
         CF_##struct_name##Keyframe zero_initialized = {0};\
         CF_##struct_name##Keyframe default_keyframe = {\
             .Add._1=0.0f, \
@@ -156,12 +156,58 @@ __CF_DEFINE_COMMON(struct_name, type, num)
         }\
         return k;\
     }\
+
+#define CF_DEFINE_2(struct_name, type, _1, _2) \
+    typedef struct { \
+        float _1;\
+        float _2;\
+    } CF__##struct_name##f;\
+    \
+    void __##struct_name##fToArray(CF__##struct_name##f orig, float* arr) {\
+        arr[0] = orig._1;\
+        arr[1] = orig._2;\
+        return;\
+    }\
+    CF__##struct_name##f __ArrayTo##struct_name##f(float* arr) {\
+        return (CF__##struct_name##f) {._1 = arr[0], ._2 = arr[1]};\
+    }\
+    CF__##struct_name##f __##struct_name##To##struct_name##f(struct_name orig) {\
+        return (CF__##struct_name##f) {orig._1, orig._2};\
+    }\
+    struct_name __##struct_name##fTo##struct_name(CF__##struct_name##f orig) {\
+        return (struct_name) {._1 = orig._1, ._2 = orig._2};\
+    }\
+    __CF_DEFINE_COMMON(struct_name, type, 2)\
+    CF_##struct_name##Keyframe CF_Init##struct_name##Keyframe(CF_##struct_name##Keyframe k) {\
+        CF_##struct_name##Keyframe zero_initialized = {0};\
+        CF_##struct_name##Keyframe default_keyframe = {\
+            .Add._1=0.0f, \
+            .Add._2=0.0f,\
+            .Mult._1=1.0f,\
+            .Mult._2=1.0f,\
+            .EasingFrames=0,\
+            .HeldFrames=0\
+            };\
+        if(k.Add._1 == zero_initialized.Add._1) {\
+            k.Add._1 = default_keyframe.Add._1;\
+        }\
+        if(k.Add._2 == zero_initialized.Add._2) {\
+            k.Add._2 = default_keyframe.Add._2;\
+        }\
+        if(k.Mult._1 == zero_initialized.Mult._1) {\
+            k.Mult._1 = default_keyframe.Mult._1;\
+        }\
+        if(k.Mult._2 == zero_initialized.Mult._2) {\
+            k.Mult._2 = default_keyframe.Mult._2;\
+        }\
+        return k;\
+    }\
     
 // Then __CalculateModifier can be identical for all length structs.
 
 
-#define CF_SetRectangleKeyframe(...) __SetRectangleKeyframe((CF_RectangleKeyframe) __VA_ARGS__)
-#define CF_SetColorKeyframe(...) __SetColorKeyframe((CF_ColorKeyframe) __VA_ARGS__)
+// #define CF_SetRectangleKeyframe(...) __SetRectangleKeyframe((CF_RectangleKeyframe) __VA_ARGS__)
+// #define CF_SetColorKeyframe(...) __SetColorKeyframe((CF_ColorKeyframe) __VA_ARGS__)
 
 // #define __USE_RAYLIB true
 // #if __USE_RAYLIB
@@ -277,8 +323,9 @@ void __StepIndex(int* CtxIndex, bool* CtxPlaying, bool* CtxReverse, int MaxIndex
 }
 
 //CF_DEFINE_4(Color, int);
-CF_DEFINE_4(Color, int, r, g, b, a);
+CF_DEFINE_4(Color, unsigned char, r, g, b, a);
 CF_DEFINE_4(Rectangle, float, x, y, width, height);
+CF_DEFINE_2(Vector2, float, x, y);
 
 // ===== Rectangle specific ======
 /*
