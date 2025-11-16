@@ -2,6 +2,7 @@
 #include "../cframe.h"
 
 int num_buttons = 5;
+CF_DEFINE_4(Rectangle, float, x, y, width, height);
 
 int main() {
 

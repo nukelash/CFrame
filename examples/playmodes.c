@@ -1,6 +1,8 @@
 #include "raylib.h"
 #include "../cframe.h"
 
+CF_DEFINE_4(Rectangle, float, x, y, width, height);
+
 int main() {
     InitWindow(850, 600, "Playmodes");
     SetTargetFPS(60);
