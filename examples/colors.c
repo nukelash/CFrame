@@ -2,6 +2,8 @@
 #include "../cframe.h"
 
 CF_DEFINE_4(Rectangle, float, x, y, width, height);
+CF_DEFINE_4(Color, unsigned char, r, g, b, a);
+CF_DEFINE_2(Vector2, float, x, y);
 
 int main() {
 
@@ -62,14 +64,16 @@ int main() {
         .Keyframes=rec_keyframes,
         .NumKeyframes=3,
         .Mode=CF_PLAYMODE_LOOP,
-        .Playing=true
+        .Playing=true,
+        .EasingFunction=CF_EASING_QUADRATIC_IN_OUT
     };
 
     CF_ColorContext ctx_color = {
         .Keyframes=color_keyframes,
         .NumKeyframes=3,
         .Mode=CF_PLAYMODE_BOOMERANG_LOOP,
-        .Playing=true
+        .Playing=true,
+        .EasingFunction=CF_EASING_CUBIC_IN_OUT
     };
 
     Rectangle rec = {200, 250, 60, 60};
