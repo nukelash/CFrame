@@ -10,9 +10,9 @@
 - Built in easing functions such as Quadratic, Sine, and more
 
 <p align="center"> 
-<img src=hover.gif />
+<img src=assets/hover.gif /> 
+<img src=assets/colors.gif />
 </p>
-
 
 ## Basic Example
 The following example uses CFrame to animate a Rectangle in raylib.
@@ -65,7 +65,7 @@ int main() {
 The above example will produce the following. You can check `basic.c` and other examples out in the `examples` folder.
 
 <p align="center"> 
-<img src=basic.gif />
+<img src=assets/basic.gif />
 </p>
 
 # **API**
