@@ -482,6 +482,30 @@ enum class PlayMode {
 };
 
 template <typename T>
+void accumulate(T* m, T t, T c) {
+    *m += t*c;
+}
+
+void temp() {
+    std::cout << "hooray!" <<std::endl;
+}
+
+template <typename TupleT>
+void for_each_tuple2(TupleT&& tp, TupleT&& tp_2, float easing) {
+    // std::cout << "=" <<std::endl;
+    std::apply([&](auto&&...  x){
+        std::apply([&](auto&& ...args){
+            // (fn(std::forward<decltype(args)>(args)), ...);
+            // temp();
+            // ((std::cout << "1: " << args << " 2: " << x << std::endl), ...);
+            ((args += (easing*x)), ...);
+            // ((std::cout << "1 += 2: " << args << std::endl), ...);
+        }, std::forward<TupleT>(tp));
+    }, std::forward<TupleT>(tp_2));
+}
+
+
+template <typename T>
 struct Animation {
 
     Animation(std::vector<Keyframe<T>> keyframes){
@@ -503,9 +527,21 @@ struct Animation {
         CalculateModification();
     }
 
+    // void __ApplyTransform(struct_name input) {
+    //     float input_arr[num];
+    //     float output_arr[num];
+    //     __##struct_name##fToArray(__##struct_name##To##struct_name##f(input), input_arr);
+    //     for (int i = 0; i < num; i++) {
+    //         output_arr[i] = modifier.Add[i] + input_arr[i];
+    //         output_arr[i] = modifier.Mult[i] * output_arr[i];
+    //     }
+    //     return __##struct_name##fTo##struct_name(__ArrayTo##struct_name##f(output_arr));
+    // }
+
     void CalculateModification() {
 
         T modifier = {0};
+        auto Modifier_tuple = to_tuple(modifier);
         int cumulative_lower = 0;
         int cumulative_upper = 0;
 
@@ -514,32 +550,15 @@ struct Animation {
             float easing_index = __CalculateEasing(_easing_func, compare(index, cumulative_lower, cumulative_upper));
 
             auto T_tuple = to_tuple(_keyframes[i].transform);
-            auto Modifier_tuple = to_tuple(modifier);
-            // std::apply([](const auto&... args) {
-            //     // Add to start
-            //     ((std::cout << args << ", "), ...);
-            // }, T_tuple);
-            auto out = std::apply([&](auto&&... t){
-                return std::apply([&](auto&&... m){
-                    return std::make_tuple(((easing_index*t)+m)...);
-                }, Modifier_tuple);
-            }, T_tuple);
-
-            std::cout << std::get<0>(out) << " " << index << std::endl;
-
-            // float struct_name##_array[num];
-            // __##struct_name##fToArray(ctx->Keyframes[i].Add, struct_name##_array);
             
-            // for (int j = 0; j < num; j++) {
-            //     modifier.Add[j] += ( easing_index * struct_name##_array[j] );
-            // }
-            // __##struct_name##fToArray(ctx->Keyframes[i].Mult, struct_name##_array);
-            // for (int j = 0;j < num; j++) {
-            //     modifier.Mult[j] = ( 1 + ( easing_index * (float) (struct_name##_array[j] - 1)) );
-            // }
+            for_each_tuple2(Modifier_tuple, T_tuple, easing_index);
+
+            std::cout << std::get<0>(Modifier_tuple) << " " << index << std::endl;
+
             cumulative_lower += _keyframes[i].easing_frames + _keyframes[i].held_frames;
         }
         // return modifier;
+        // modifier tuple back to T
     }
 
     float compare(int x, int lower, int upper) {
@@ -657,11 +676,12 @@ int main() {
     // keyframe<Rectangle> key2{.add};
 
     CF::Keyframe<Rectangle> k{.transform={.x=23}, .type=CF::TransformType::SCALE, .easing_frames=60, .held_frames=10};
+    CF::Keyframe<Rectangle> k1{.transform={.x=-5}, .type=CF::TransformType::SCALE, .easing_frames=60, .held_frames=10};
 
-    std::vector<CF::Keyframe<Rectangle>> v_k = {k};
+    std::vector<CF::Keyframe<Rectangle>> v_k = {k, k1};
 
     CF::Animation<Rectangle> a(v_k);
-    for (auto i = 0; i< 50; i++)
+    for (auto i = 0; i< 120; i++)
         a.Process(Rectangle{1, 2, 3, 4});
 
     auto t = CF::to_tuple(k.transform);
