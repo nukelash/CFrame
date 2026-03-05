@@ -508,11 +508,12 @@ void for_each_tuple2(TupleT&& tp, TupleT&& tp_2, float easing) {
 template <typename T>
 struct Animation {
 
-    Animation(std::vector<Keyframe<T>> keyframes){
+    Animation(T initial_object, std::vector<Keyframe<T>> keyframes){
+        _initial = initial_object;
         _keyframes = keyframes;
     }
 
-    T Process(T input) {
+    T Next() {
         if(playing) {
             int max_index = 0;
             for (int i = 0; i < _keyframes.size(); i++) {
@@ -524,24 +525,26 @@ struct Animation {
         }
 
         //Calculate modifier
-        CalculateModification();
+        return CalculateModification();
+
+        
     }
 
-    // void __ApplyTransform(struct_name input) {
-    //     float input_arr[num];
-    //     float output_arr[num];
-    //     __##struct_name##fToArray(__##struct_name##To##struct_name##f(input), input_arr);
-    //     for (int i = 0; i < num; i++) {
-    //         output_arr[i] = modifier.Add[i] + input_arr[i];
-    //         output_arr[i] = modifier.Mult[i] * output_arr[i];
-    //     }
-    //     return __##struct_name##fTo##struct_name(__ArrayTo##struct_name##f(output_arr));
-    // }
+    void __ApplyTransform(T input) {
+        // float input_arr[num];
+        // float output_arr[num];
+        // __##struct_name##fToArray(__##struct_name##To##struct_name##f(input), input_arr);
+        // for (int i = 0; i < num; i++) {
+        //     output_arr[i] = modifier.Add[i] + input_arr[i];
+        //     output_arr[i] = modifier.Mult[i] * output_arr[i];
+        // }
+        // return __##struct_name##fTo##struct_name(__ArrayTo##struct_name##f(output_arr));
+    }
 
-    void CalculateModification() {
+    T CalculateModification() {
 
         T modifier = {0};
-        auto Modifier_tuple = to_tuple(modifier);
+        auto Modifier_tuple = to_tuple(_initial);
         int cumulative_lower = 0;
         int cumulative_upper = 0;
 
@@ -553,12 +556,13 @@ struct Animation {
             
             for_each_tuple2(Modifier_tuple, T_tuple, easing_index);
 
-            std::cout << std::get<0>(Modifier_tuple) << " " << index << std::endl;
+            // std::cout << std::get<0>(Modifier_tuple) << " " << index << std::endl;
 
             cumulative_lower += _keyframes[i].easing_frames + _keyframes[i].held_frames;
         }
         // return modifier;
         // modifier tuple back to T
+        return std::make_from_tuple<T>(std::move(Modifier_tuple));
     }
 
     float compare(int x, int lower, int upper) {
@@ -651,6 +655,7 @@ struct Animation {
     bool _reverse = false;
     int _keyframe_idx;
     T _modification;
+    T _initial;
 };
 
 } //CF
@@ -658,6 +663,25 @@ struct Animation {
 /*
 MAYBE the way forward is just a single T struct, and an enum that describes the transformation i.e. CF_TRANSFORM_TO, CF_TRANSFORM_ADD etc. Then the T types themselves don't need to be optional
 BUT then I'd still need each T member to be optional... maybe that's where the boost pfr library comes in.
+*/
+
+/*
+
+Rectangle rec = {1, 2, 3, 4};
+
+CF::Animated<Rectangle> anim_rec(rec, keyframes)
+
+if (mouse_clicked) {
+    anim_rec.Play();
+    anim_rec.playing = true; // I think I like this better -- more control to the user
+}
+
+DrawRectanlgeRec(anim_rec.Get(), BLUE); // Next(), Get(), Step(), Process(), etc..
+
+vs
+DrawRectangleRec(anim_rec.Process(rec), BLUE); // with this option, rec, doesn't need to get defined before anim_rec, it can do it to any rectangle. Is this truly helpful?
+
+I think the first option, where an Animated<> object is instantiated by the OG object and its keyframes, is pretty straightforward and elegant
 */
 
 
@@ -676,13 +700,18 @@ int main() {
     // keyframe<Rectangle> key2{.add};
 
     CF::Keyframe<Rectangle> k{.transform={.x=23}, .type=CF::TransformType::SCALE, .easing_frames=60, .held_frames=10};
-    CF::Keyframe<Rectangle> k1{.transform={.x=-5}, .type=CF::TransformType::SCALE, .easing_frames=60, .held_frames=10};
+    CF::Keyframe<Rectangle> k1{.transform={.y=-5}, .type=CF::TransformType::SCALE, .easing_frames=60, .held_frames=10};
 
     std::vector<CF::Keyframe<Rectangle>> v_k = {k, k1};
 
-    CF::Animation<Rectangle> a(v_k);
-    for (auto i = 0; i< 120; i++)
-        a.Process(Rectangle{1, 2, 3, 4});
+    Rectangle rec = {1, 2, 3, 4};
+    Rectangle rec_processed = {0};
+
+    CF::Animation<Rectangle> a(rec, v_k);
+    for (auto i = 0; i< 140; i++)
+        rec_processed = a.Next();
+
+    std::cout << rec_processed.x << ", " <<rec_processed.y << ", " << rec_processed.width << ", " << rec_processed.height << std::endl;
 
     auto t = CF::to_tuple(k.transform);
 
