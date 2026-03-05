@@ -6,35 +6,8 @@
 #include <optional>
 #include <iostream>
 
-// CF_Rectangle rec;
-
-// CF_DEFINE_4(Rectangle, float, x, y, width, height);
-// CF_DEFINE_3(Word, char, _1, _2, _3);
-
-// template <typename T>
-// struct keyframe {
-
-//     // typedef struct {
-//     //     T add;
-//     //     std::optional<T> scale;
-//     //     T to;
-//     // } input;
-
-//     keyframe(std::optional<T> add, std::optional<T> scale) {}
-
-//     // typedef union {
-//     //     T val;
-//     //     bool empty = true;
-//     // } type_flexible;
-    
-
-//     T add;
-//     std::optional<T> scale;
-//     std::optional<T> to;
-//     std::optional<int> i;
-// };
-
 namespace CF {
+    //TODO put these in anonymous namespace
 // ====================== Easing Functions ======================
 // The following easing functions ripped from AHeasing (https://github.com/warrenm/AHEasing)
 
@@ -440,25 +413,6 @@ struct any_type {
   constexpr operator T(); // non explicit
 };
 
-template<class T>
-auto to_tuple(T&& object) noexcept {
-    using type = std::decay_t<T>;
-    if constexpr(is_braces_constructible<type, any_type, any_type, any_type, any_type>{}) {
-      auto&& [p1, p2, p3, p4] = object;
-      return std::make_tuple(p1, p2, p3, p4);
-    } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type>{}) {
-      auto&& [p1, p2, p3] = object;
-      return std::make_tuple(p1, p2, p3);
-    } else if constexpr(is_braces_constructible<type, any_type, any_type>{}) {
-      auto&& [p1, p2] = object;
-      return std::make_tuple(p1, p2);
-    } else if constexpr(is_braces_constructible<type, any_type>{}) {
-      auto&& [p1] = object;
-      return std::make_tuple(p1);
-    } else {
-        return std::make_tuple();
-    }
-}
 
 enum class TransformType {
     OFFSET,
@@ -481,46 +435,24 @@ enum class PlayMode {
     BOOMERANG_LOOP
 };
 
-template <typename T>
-void accumulate(T* m, T t, T c) {
-    *m += t*c;
-}
-
-void temp() {
-    std::cout << "hooray!" <<std::endl;
-}
-
-template <typename TupleT>
-void for_each_tuple2(TupleT&& tp, TupleT&& tp_2, float easing, TransformType transform) {
-    // std::cout << "=" <<std::endl;
-    std::apply([&](auto&&...  x){
-        std::apply([&](auto&& ...args){
-            // (fn(std::forward<decltype(args)>(args)), ...);
-            // temp();
-            // ((std::cout << "1: " << args << " 2: " << x << std::endl), ...);
-            if (transform == TransformType::OFFSET)
-                ((args += (easing*x)), ...);
-            else if (transform == TransformType::SCALE)
-                ((args *= (1+(easing*(x-1)))), ...);
-            // ((std::cout << "1 += 2: " << args << std::endl), ...);
-        }, std::forward<TupleT>(tp));
-    }, std::forward<TupleT>(tp_2));
-}
-
-
+//TODO define the header at top of file, then put implementations under #ifdef etc..
 template <typename T>
 struct Animation {
 
     Animation(T initial_object, std::vector<Keyframe<T>> keyframes){
         _initial = initial_object;
         _keyframes = keyframes;
-        _index_checkpoints.push_back(0);
-        for (auto k : _keyframes) {
-            _index_checkpoints.push_back(_index_checkpoints.back() + k.easing_frames);
-            _index_checkpoints.push_back(_index_checkpoints.back() + k.held_frames);
-        }
-        // for (auto i : _index_checkpoints)
-        //     std::cout << i << std::endl;
+
+        __Initialize();
+    }
+
+    Animation(T initial_object, std::vector<Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing){
+        _initial = initial_object;
+        _keyframes = keyframes;
+        _playmode = playmode;
+        _easing_func = easing;
+
+        __Initialize();
     }
 
     T Next() {
@@ -531,117 +463,43 @@ struct Animation {
                 max_index += _keyframes[i].held_frames;
             }
 
-            Step(max_index);
+            // Step index based on playmode
+            __Step(max_index);
         }
 
-        //Calculate modifier
-        return CalculateModification();
-
-        
-    }
-
-    T CalculateModification() {
-        /*
-        Since I'm now holding the initial struct in the object, I should change this calculation to be more incremental instead of solving the whole thing at once.
-
-        .next()
-            find which keyframe current index is in
-                held = false
-                idx = 0
-                for c in checkpoints
-                    if c < i
-                        if i < c+1
-                            if c%2 == 0
-                                apply easing kf[idx]
-                            else
-                                apply final kf[idx]
-                        else
-                            apply final kf[idx]
-                    else
-                        break
-            apply final endpoints of previous keyframes
-            find easing index of current keyframe and apply
-        */
-        auto initial_tuple = to_tuple(_initial);
-        std::cout << "Initial x: " << std::get<0>(initial_tuple) << std::endl;
+        auto initial_tuple = __ToTuple(_initial);
 
         for (auto i = 0; i < _index_checkpoints.size(); i++) {
             if ((_index_checkpoints[i] < index) && (i%2 != 1)) {
-                auto T_tuple = to_tuple(_keyframes[(i/2)].transform);
-                float easing_index = __CalculateEasing(_easing_func, compare(index, _index_checkpoints[i], _index_checkpoints[i+1]));
-                for_each_tuple2(initial_tuple, T_tuple, easing_index, _keyframes[(i/2)].type);
+                auto transform_tuple = __ToTuple(_keyframes[(i/2)].transform);
+                float easing_index = __CalculateEasing(_easing_func, __Compare(index, _index_checkpoints[i], _index_checkpoints[i+1]));
+                __ApplyTransform(initial_tuple, transform_tuple, easing_index, _keyframes[(i/2)].type);
             }
-            // std::cout << "Loop x: " << std::get<0>(initial_tuple) << std::endl;
-            
-            // if (_index_checkpoints[i] < index) {
-            //     auto T_tuple = to_tuple(_keyframes[(i/2)].transform);
-                
-            //     if (index < _index_checkpoints[i+1]) {
-            //         float easing_index = __CalculateEasing(_easing_func, compare(index, _index_checkpoints[i], _index_checkpoints[i+1]));
-                    
-            //         if (i%2 == 0) {
-            //             std::cout << "1\n";
-            //             for_each_tuple2(initial_tuple, T_tuple, easing_index, _keyframes[(i/2)].type);
-            //         }
-            //         else {
-            //             std::cout << "2\n";
-            //             // do nothing?
-            //             for_each_tuple2(initial_tuple, T_tuple, 1, _keyframes[(i/2)].type);
-            //             // break;
-            //         }
-            //     }
-            //     else {
-            //         std::cout << "3\n";
-            //         // apply final
-            //         // for_each_tuple2(initial_tuple, T_tuple, 1, _keyframes[(i/2)].type);
-            //         // break;
-            //     }
-            // }
-            // else {
-            //     break;
-            // }
         }
         return std::make_from_tuple<T>(std::move(initial_tuple));
-
-
-        T modifier = {0};
-        auto Modifier_tuple = to_tuple(_initial);
-        int cumulative_lower = 0;
-        int cumulative_upper = 0;
-
-        for(int i = 0; i < _keyframes.size(); i++) {
-            cumulative_upper = cumulative_lower + _keyframes[i].easing_frames;
-            float easing_index = __CalculateEasing(_easing_func, compare(index, cumulative_lower, cumulative_upper));
-
-            auto T_tuple = to_tuple(_keyframes[i].transform);
-            
-            for_each_tuple2(Modifier_tuple, T_tuple, easing_index, _keyframes[i].type);
-
-            std::cout << std::get<0>(Modifier_tuple) << " " << index << std::endl;
-
-            cumulative_lower += _keyframes[i].easing_frames + _keyframes[i].held_frames;
-        }
-        // return modifier;
-        // modifier tuple back to T
-        return std::make_from_tuple<T>(std::move(Modifier_tuple));
     }
 
-    float compare(int x, int lower, int upper) {
-        float output;
-        if (x < lower) {
-            output = 0;
-        }
-        else if (x > upper) {
-            output = 1;
-        }
-        else {
-            output = ((float)(x-lower) / (float)(upper-lower));
-        }
+    
+    // I suppose for now if you really want to modify these, feel free
+    std::vector<Keyframe<T>> _keyframes;
+    std::vector<int> _index_checkpoints;
+    int index = 0;
+    bool playing = true;
+    PlayMode _playmode = PlayMode::ONCE;
+    EasingFunction _easing_func = EasingFunction::CUBIC_IN_OUT;
+    bool _reverse = false;
+    T _initial;
 
-        return output;
+private:
+    void __Initialize() {
+        _index_checkpoints.push_back(0);
+        for (auto k : _keyframes) {
+            _index_checkpoints.push_back(_index_checkpoints.back() + k.easing_frames);
+            _index_checkpoints.push_back(_index_checkpoints.back() + k.held_frames);
+        }
     }
 
-    void Step(int max_index) {
+    void __Step(int max_index) {
         switch (_playmode) {
 
             case PlayMode::LOOP:
@@ -708,16 +566,56 @@ struct Animation {
         }
     }
 
-    std::vector<Keyframe<T>> _keyframes;
-    std::vector<int> _index_checkpoints;
-    int index = 0;
-    bool playing = true;
-    PlayMode _playmode = PlayMode::ONCE;
-    EasingFunction _easing_func = EasingFunction::LINEAR;
-    bool _reverse = false;
-    int _keyframe_idx;
-    T _modification;
-    T _initial;
+    float __Compare(int x, int lower, int upper) {
+        float output;
+        if (x < lower) {
+            output = 0;
+        }
+        else if (x > upper) {
+            output = 1;
+        }
+        else {
+            output = ((float)(x-lower) / (float)(upper-lower));
+        }
+
+        return output;
+    }
+
+    //TODO probably put these in anonymous namespace as well
+    template <typename TupleT>
+    void __ApplyTransform(TupleT&& transformed_tuple, TupleT&& transforming_tuple, float easing, TransformType transform) {
+
+        std::apply([&](auto&&...  x){
+            std::apply([&](auto&& ...out){
+
+                if (transform == TransformType::OFFSET)
+                    ((out += (easing*x)), ...);
+                else if (transform == TransformType::SCALE)
+                    ((out *= (1+(easing*(x-1)))), ...);
+
+            }, std::forward<TupleT>(transformed_tuple));
+        }, std::forward<TupleT>(transforming_tuple));
+    }
+
+    template<class Tp>
+    auto __ToTuple(Tp&& object) noexcept {
+        using type = std::decay_t<Tp>;
+        if constexpr(is_braces_constructible<type, any_type, any_type, any_type, any_type>{}) {
+        auto&& [p1, p2, p3, p4] = object;
+        return std::make_tuple(p1, p2, p3, p4);
+        } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type>{}) {
+        auto&& [p1, p2, p3] = object;
+        return std::make_tuple(p1, p2, p3);
+        } else if constexpr(is_braces_constructible<type, any_type, any_type>{}) {
+        auto&& [p1, p2] = object;
+        return std::make_tuple(p1, p2);
+        } else if constexpr(is_braces_constructible<type, any_type>{}) {
+        auto&& [p1] = object;
+        return std::make_tuple(p1);
+        } else {
+            return std::make_tuple();
+        }
+    }
 };
 
 } //CF
@@ -750,72 +648,32 @@ I think the first option, where an Animated<> object is instantiated by the OG o
 
 int main() {
 
-    // InitWindow(680, 400, "Basic Example");
-    // SetTargetFPS(60);
-    std::optional<Rectangle> temp;
-    temp = {10, 10, 10, 10};
+    InitWindow(680, 400, "Basic Example");
+    SetTargetFPS(60);
 
-    // keyframe<Rectangle> key();
-    // keyframe<Rectangle> k = {.add.x=10};
-    // keyframe<Rectangle> key{.add.x=10, .add.y=20, .scale=Rectangle{.x=2}};
-    // keyframe<int> key_i{.add = 10, .scale=1};
-    // keyframe<Rectangle> key2{.add};
+    std::vector<CF::Keyframe<Rectangle>> keyframes = {
+        {
+            .transform = {.x = 20},
+            .type = CF::TransformType::OFFSET
+        },
+        {
+            .transform = {.x = 1, .y = 1, .width = 3, .height = 3},
+            .type = CF::TransformType::SCALE
+        }
+    };
 
-    CF::Keyframe<Rectangle> k{.transform={.x=23}, .type=CF::TransformType::OFFSET, .easing_frames=60, .held_frames=10};
-    CF::Keyframe<Rectangle> k1{.transform={.x=1, .y=-5, .width=1, .height=1}, .type=CF::TransformType::SCALE, .easing_frames=60, .held_frames=10};
+    Rectangle rec = {100, 100, 100, 100};
+    CF::Animation<Rectangle> moving_rectangle(rec, keyframes);
 
-    std::vector<CF::Keyframe<Rectangle>> v_k = {k, k1};
+    while(!WindowShouldClose()) {
 
-    Rectangle rec = {1, 2, 3, 4};
-    Rectangle rec_processed = {0};
+        BeginDrawing();
 
-    CF::Animation<Rectangle> a(rec, v_k);
-    for (auto i = 0; i< 140; i++) {
-        rec_processed = a.Next();
-        std::cout << i << ": " << rec_processed.x << ", " <<rec_processed.y << ", " << rec_processed.width << ", " << rec_processed.height << std::endl;
-    }
-        
-
-    
-
-    auto t = CF::to_tuple(k.transform);
-
-    std::cout << std::tuple_size_v<decltype(t)> << std::endl;
-
-    // keyframe2<Rectangle> k2{.type=CF::ADD, .length=60, 
-    //     .transform={.x=10, .y=0, .width=0, .height=0}};
-
-    // std::cout << key.add.x << key.scale.value().x << std::endl;
-    // std::cout << k.scale.value().x <<std::endl;
-
-    // CF_RectangleKeyframe keyframes[1] = {
-    //     CF_InitRectangleKeyframe((CF_RectangleKeyframe) {
-    //         .Add.x=200, 
-    //         .EasingFrames=60
-    //         }), 
-    // };
-
-    // CF_RectangleContext ctx_rec = {
-    //     .Keyframes=keyframes,
-    //     .NumKeyframes=1,
-    //     .Mode=CF_PLAYMODE_BOOMERANG_LOOP,
-    //     .Playing=true
-    // };
-
-
-    // Rectangle rec = {200, 150, 60, 60};
-
-
-    // while(!WindowShouldClose()) {
-
-    //     BeginDrawing();
-
-    //         ClearBackground(LIGHTGRAY);
-
-    //         DrawRectangleRec(CF_RectangleProcess(&ctx_rec, rec), BLUE);
+            ClearBackground(LIGHTGRAY);
+            DrawRectangleRec(moving_rectangle.Next(), BLUE);
    
-    //     EndDrawing();
-    // }
+        EndDrawing();
+    }
 
     return 0;
 }
