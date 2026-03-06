@@ -1,3 +1,5 @@
+#define CF_IMPLEMENTATION_RAYLIB 1
+
 #include "raylib.h"
 #include "../cframe.h"
 
@@ -7,8 +9,10 @@ typedef struct _word {
     char _3;
 } Word;
 
-CF_DEFINE_4(Rectangle, float, x, y, width, height);
-CF_DEFINE_3(Word, char, _1, _2, _3);
+CF_Rectangle rec;
+
+// CF_DEFINE_4(Rectangle, float, x, y, width, height);
+// CF_DEFINE_3(Word, char, _1, _2, _3);
 
 int main() {
 
