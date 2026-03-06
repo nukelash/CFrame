@@ -91,9 +91,9 @@ int main() {
     //     })
     // };
 
-    std::vector<CF::Keyframe<myfloat>> roundness_keyframes = {
+    std::vector<CF::Keyframe<float>> roundness_keyframes = {
         {
-            .transform = {1.0f},
+            .transform = 1.0f,
             .type = CF::TransformType::OFFSET,
             .easing_frames = 120
         }
@@ -106,7 +106,7 @@ int main() {
     //     .Playing=true
     // };
 
-    CF::Animation<myfloat> roundness = {{0.0f}, roundness_keyframes, CF::PlayMode::BOOMERANG_LOOP, CF::EasingFunction::QUADRATIC_IN_OUT};
+    CF::Animation<float> roundness = {0.0f, roundness_keyframes, CF::PlayMode::BOOMERANG_LOOP, CF::EasingFunction::QUADRATIC_IN_OUT};
 
     // CF_RectangleContext ctx_rec = {
     //     .Keyframes=rec_keyframes,
@@ -142,7 +142,7 @@ int main() {
 
             // DrawRectangleRounded(CF_RectangleProcess(&ctx_rec, rec), r, 8, CF_ColorProcess(&ctx_color, c));
 
-            DrawRectangleRounded(rectangle.Next(), roundness.Next().f, 8, color.Next());
+            DrawRectangleRounded(rectangle.Next(), roundness.Next(), 8, color.Next());
    
         EndDrawing();
     }

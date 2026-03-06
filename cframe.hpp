@@ -1,4 +1,6 @@
 #include <math.h>
+#include <tuple>
+#include <type_traits>
 #include <vector>
 
 namespace CF {
@@ -592,21 +594,23 @@ private:
         }, std::forward<TupleT>(transforming_tuple));
     }
 
-    template<class Tp>
+    template<typename Tp>
     auto __ToTuple(Tp&& object) noexcept {
         using type = std::decay_t<Tp>;
-        if constexpr(is_braces_constructible<type, any_type, any_type, any_type, any_type>{}) {
-        auto&& [p1, p2, p3, p4] = object;
-        return std::make_tuple(p1, p2, p3, p4);
+        if constexpr(std::is_scalar_v<type>) {
+            return std::make_tuple(object);
+        } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type, any_type>{}) {
+            auto&& [p1, p2, p3, p4] = object;
+            return std::make_tuple(p1, p2, p3, p4);
         } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type>{}) {
-        auto&& [p1, p2, p3] = object;
-        return std::make_tuple(p1, p2, p3);
+            auto&& [p1, p2, p3] = object;
+            return std::make_tuple(p1, p2, p3);
         } else if constexpr(is_braces_constructible<type, any_type, any_type>{}) {
-        auto&& [p1, p2] = object;
-        return std::make_tuple(p1, p2);
+            auto&& [p1, p2] = object;
+            return std::make_tuple(p1, p2);
         } else if constexpr(is_braces_constructible<type, any_type>{}) {
-        auto&& [p1] = object;
-        return std::make_tuple(p1);
+            auto&& [p1] = object;
+            return std::make_tuple(p1);
         } else {
             return std::make_tuple();
         }
