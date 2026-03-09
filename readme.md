@@ -2,7 +2,7 @@
 
 **CFrame** makes it a ***breeze*** to implement beautiful animations in your C++ UI/GUI application.
 
-<i>Note: CFrame is now a C++20 library, rather than C99. This was done to take advantage of templates, making the library much more intuitive, expressive, and maintainable.
+<i>Note: CFrame is now a C++20 library, rather than C99. This was done to take advantage of templates, making the library much more intuitive, expressive, and maintainable.</i>
 
 ### **Major Features**
 - Header only, C++20 library with no dependencies
