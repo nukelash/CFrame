@@ -2,6 +2,7 @@
 #include <tuple>
 #include <type_traits>
 #include <vector>
+#include <iostream>
 
 namespace CF {
 //TODO put these in anonymous namespace
@@ -419,8 +420,22 @@ enum class TransformType {
 
 template <typename T>
 struct Keyframe{
-    T transform;
+    // Keyframe(TransformType transform_type, std::vector<float> transformation) {
+    //     //assert transformation size == T size
+    //     _type = transform_type;
+    //     _transformation = transformation;
+    // }
+
+    // Keyframe(TransformType transform_type, std::vector<float> transformation, int easing_frames, int held_frames) {
+    //     //assert transformation size == T size
+    //     _type = transform_type;
+    //     _transformation = transformation;
+    //     _easing_frames = easing_frames;
+    //     _held_frames = held_frames;
+    // }
+
     TransformType type;
+    std::vector<float> transform;
     int easing_frames = 60;
     int held_frames = 0;
 };
@@ -468,9 +483,9 @@ struct Animation {
 
         for (auto i = 0; i < _index_checkpoints.size(); i++) {
             if ((_index_checkpoints[i] < index) && (i%2 != 1)) {
-                auto transform_tuple = __ToTuple(_keyframes[(i/2)].transform);
+                // auto transform_tuple = __ToTuple(_keyframes[(i/2)]._transformation);
                 float easing_index = __CalculateEasing(_easing_func, __Compare(index, _index_checkpoints[i], _index_checkpoints[i+1]));
-                __ApplyTransform(initial_tuple, transform_tuple, easing_index, _keyframes[(i/2)].type);
+                __ApplyTransform(initial_tuple, _keyframes[(i/2)].transform, easing_index, _keyframes[(i/2)].type);
             }
         }
         return std::make_from_tuple<T>(std::move(initial_tuple));
@@ -580,18 +595,19 @@ private:
 
     //TODO probably put these in anonymous namespace as well
     template <typename TupleT>
-    void __ApplyTransform(TupleT&& transformed_tuple, TupleT&& transforming_tuple, float easing, TransformType transform) {
+    void __ApplyTransform(TupleT&& transformed_tuple, std::vector<float> transformer, float easing, TransformType transform) {
+        int idx = 0;
 
-        std::apply([&](auto&&...  x){
-            std::apply([&](auto&& ...out){
+        // for some reason, idx only increments correctly if you do it in the transformation
+        // (and not if you use a separate idx++; line.)
+        std::apply([&](auto&& ...out){
 
-                if (transform == TransformType::OFFSET)
-                    ((out += (easing*x)), ...);
-                else if (transform == TransformType::SCALE)
-                    ((out *= (1+(easing*(x-1)))), ...);
+            if (transform == TransformType::OFFSET)
+                ((out += (easing*transformer[idx++])), ...);
+            else if (transform == TransformType::SCALE)
+                ((out *= (1+(easing*(transformer[idx++]-1)))), ...);
 
-            }, std::forward<TupleT>(transformed_tuple));
-        }, std::forward<TupleT>(transforming_tuple));
+        }, std::forward<TupleT>(transformed_tuple));
     }
 
     template<typename Tp>

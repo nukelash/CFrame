@@ -14,20 +14,20 @@ int main() {
 
     std::vector<CF::Keyframe<Rectangle>> rectangle_keyframes {
         {
-            .transform = {.x = 200},
             .type = CF::TransformType::OFFSET,
+            .transform = {200, 0, 0, 0},
             .easing_frames = 60,
             .held_frames = 10
         },
         {
-            .transform = {.x = -100, .y = -200},
             .type = CF::TransformType::OFFSET,
+            .transform = {-100, -200, 0, 0},
             .easing_frames = 60,
             .held_frames = 10
         },
         {
-            .transform = {.x = -100, .y = 200},
             .type = CF::TransformType::OFFSET,
+            .transform = {-100, 200, 0, 0},
             .easing_frames = 60,
             .held_frames = 10
         }
@@ -35,19 +35,26 @@ int main() {
 
     std::vector<CF::Keyframe<Color>> color_keyframes = {
         {
-            .transform = {.r = 15, .g = 255},
-            .type = CF::TransformType::OFFSET
+            .type = CF::TransformType::OFFSET,
+            .transform = {-255, 255, 0, 0},
+            
         },
         {
-            .transform = {.r = 15, .g = 255},
-            .type = CF::TransformType::OFFSET
+            .type = CF::TransformType::OFFSET,
+            .transform = {0, -255, 255, 0},
+            
+        },
+        {
+            .type = CF::TransformType::OFFSET,
+            .transform = {255, 0, -255, 0},
+            
         }
     };
 
     std::vector<CF::Keyframe<float>> roundness_keyframes = {
         {
-            .transform = 1.0f,
             .type = CF::TransformType::OFFSET,
+            .transform = {1.0f},
             .easing_frames = 120
         }
     };

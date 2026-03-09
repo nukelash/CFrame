@@ -8,16 +8,12 @@ int main() {
 
     std::vector<CF::Keyframe<Rectangle>> keyframes = {
         {
-            .transform = {.x = 20},
-            .type = CF::TransformType::OFFSET
-        },
-        {
-            .transform = {.x = 1, .y = 1, .width = 3, .height = 3},
-            .type = CF::TransformType::SCALE
+            .type = CF::TransformType::OFFSET,
+            .transform = {280, 0, 0, 0},
         }
     };
 
-    CF::Animation<Rectangle> rec({100, 100, 100, 100}, keyframes);
+    CF::Animation<Rectangle> rec({150, 150, 100, 100}, keyframes, CF::PlayMode::BOOMERANG_LOOP, CF::EasingFunction::CUBIC_IN_OUT);
 
     while(!WindowShouldClose()) {
 
