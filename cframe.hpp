@@ -451,23 +451,32 @@ enum class PlayMode {
 template <typename T>
 struct Animation {
 
-    Animation(T initial_object, std::vector<Keyframe<T>> keyframes){
-        _initial = initial_object;
-        _keyframes = keyframes;
+    Animation() {}
 
-        __Initialize();
+    Animation(T initial_object, std::vector<Keyframe<T>> keyframes){
+        init(initial_object, keyframes, _playmode, _easing_func);
     }
 
     Animation(T initial_object, std::vector<Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing){
+
+        init(initial_object, keyframes, playmode, easing);
+    }
+
+    void init(T initial_object, std::vector<Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing) {
+
         _initial = initial_object;
         _keyframes = keyframes;
         _playmode = playmode;
         _easing_func = easing;
 
-        __Initialize();
+        _index_checkpoints.push_back(0);
+        for (auto k : _keyframes) {
+            _index_checkpoints.push_back(_index_checkpoints.back() + k.easing_frames);
+            _index_checkpoints.push_back(_index_checkpoints.back() + k.held_frames);
+        }
     }
 
-    T Next() {
+    T get() {
         if(playing) {
             int max_index = 0;
             for (int i = 0; i < _keyframes.size(); i++) {
@@ -503,13 +512,6 @@ struct Animation {
     T _initial;
 
 private:
-    void __Initialize() {
-        _index_checkpoints.push_back(0);
-        for (auto k : _keyframes) {
-            _index_checkpoints.push_back(_index_checkpoints.back() + k.easing_frames);
-            _index_checkpoints.push_back(_index_checkpoints.back() + k.held_frames);
-        }
-    }
 
     void __Step(int max_index) {
         switch (_playmode) {

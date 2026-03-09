@@ -20,7 +20,7 @@ int main() {
         BeginDrawing();
 
             ClearBackground(LIGHTGRAY);
-            DrawRectangleRec(rec.Next(), BLUE);
+            DrawRectangleRec(rec.get(), BLUE);
    
         EndDrawing();
     }

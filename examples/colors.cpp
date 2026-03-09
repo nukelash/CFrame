@@ -71,7 +71,7 @@ int main() {
 
             ClearBackground(LIGHTGRAY);
 
-            DrawRectangleRounded(rectangle.Next(), roundness.Next(), 8, color.Next());
+            DrawRectangleRounded(rectangle.get(), roundness.get(), 8, color.get());
    
         EndDrawing();
     }
