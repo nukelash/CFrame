@@ -420,19 +420,6 @@ enum class TransformType {
 
 template <typename T>
 struct Keyframe{
-    // Keyframe(TransformType transform_type, std::vector<float> transformation) {
-    //     //assert transformation size == T size
-    //     _type = transform_type;
-    //     _transformation = transformation;
-    // }
-
-    // Keyframe(TransformType transform_type, std::vector<float> transformation, int easing_frames, int held_frames) {
-    //     //assert transformation size == T size
-    //     _type = transform_type;
-    //     _transformation = transformation;
-    //     _easing_frames = easing_frames;
-    //     _held_frames = held_frames;
-    // }
 
     TransformType type;
     std::vector<float> transform;
