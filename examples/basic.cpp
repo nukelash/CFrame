@@ -1,4 +1,6 @@
 #include "raylib.h"
+
+#define CFRAME_IMPLEMENTATION
 #include "../cframe.hpp"
 
 int main() {

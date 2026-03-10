@@ -16,10 +16,15 @@
 <img src=assets/colors.gif />
 </p>
 
+## Including in your project
+Simply include `cframe.hpp` and define `CFRAME_IMPLEMENTATION` once somewhere in your project.
+
 ## Basic Example
 The following is basic.cpp in the `examples` folder. It uses CFrame to animate a Rectangle in raylib.
 ```C++
 #include "raylib.h"
+
+#define CFRAME_IMPLEMENTATION
 #include "../cframe.hpp"
 
 int main() {

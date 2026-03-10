@@ -2,9 +2,142 @@
 #include <tuple>
 #include <type_traits>
 #include <vector>
-#include <iostream>
+
+namespace {
+// https://gist.github.com/utilForever/1a058050b8af3ef46b58bcfa01d5375d
+
+template <class T, class... TArgs> decltype(void(T{std::declval<TArgs>()...}), std::true_type{}) test_is_braces_constructible(int);
+template <class, class...> std::false_type test_is_braces_constructible(...);
+template <class T, class... TArgs> using is_braces_constructible = decltype(test_is_braces_constructible<T, TArgs...>(0));
+
+struct any_type {
+  template<class T>
+  constexpr operator T(); // non explicit
+};
+
+template<typename Tp>
+auto __ToTuple(Tp&& object) noexcept {
+    using type = std::decay_t<Tp>;
+    if constexpr(std::is_scalar_v<type>) {
+        return std::make_tuple(object);
+    } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type, any_type>{}) {
+        auto&& [p1, p2, p3, p4] = object;
+        return std::make_tuple(p1, p2, p3, p4);
+    } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type>{}) {
+        auto&& [p1, p2, p3] = object;
+        return std::make_tuple(p1, p2, p3);
+    } else if constexpr(is_braces_constructible<type, any_type, any_type>{}) {
+        auto&& [p1, p2] = object;
+        return std::make_tuple(p1, p2);
+    } else if constexpr(is_braces_constructible<type, any_type>{}) {
+        auto&& [p1] = object;
+        return std::make_tuple(p1);
+    } else {
+        return std::make_tuple();
+    }
+}
+}
 
 namespace CF {
+
+enum class TransformType {
+    OFFSET,
+    SCALE,
+    TO
+};
+
+template <typename T>
+struct Keyframe{
+    TransformType type;
+    std::vector<float> transform;
+    int easing_frames = 60;
+    int held_frames = 0;
+};
+
+enum class PlayMode {
+    ONCE,
+    LOOP,
+    BOOMERANG_ONCE,
+    BOOMERANG_LOOP
+};
+
+enum class EasingFunction {
+    LINEAR,
+    QUADRATIC_IN,
+    QUADRATIC_OUT,
+    QUADRATIC_IN_OUT,
+    CUBIC_IN,
+    CUBIC_OUT,
+    CUBIC_IN_OUT,
+    QUARTIC_IN,
+    QUARTIC_OUT,
+    QUARTIC_IN_OUT,
+    QUINTIC_IN,
+    QUINTIC_OUT,
+    QUINTIC_IN_OUT,
+    SINE_IN,
+    SINE_OUT,
+    SINE_IN_OUT,
+    CIRCULAR_IN,
+    CIRCULAR_OUT,
+    CIRCULAR_IN_OUT,
+    EXPONENTIAL_IN,
+    EXPONENTIAL_OUT,
+    EXPONENTIAL_IN_OUT,
+    ELASTIC_IN,
+    ELASTIC_OUT,
+    ELASTIC_IN_OUT,
+    BACK_IN,
+    BACK_OUT,
+    BACK_IN_OUT,
+    BOUNCE_IN,
+    BOUNCE_OUT,
+    BOUNCE_IN_OUT
+};
+
+//TODO define the header at top of file, then put implementations under #ifdef etc..
+template <typename T>
+struct Animation {
+
+    Animation() {}
+
+    Animation(T initial_object, std::vector<Keyframe<T>> keyframes);
+
+    Animation(T initial_object, std::vector<Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing);
+
+    void init(T initial_object, std::vector<Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing);
+
+    T get();
+
+    
+    // I suppose for now if you really want to modify these, feel free
+    std::vector<Keyframe<T>> _keyframes;
+    std::vector<int> _index_checkpoints;
+    int index = 0;
+    bool playing = true;
+    PlayMode _playmode = PlayMode::ONCE;
+    EasingFunction _easing_func = EasingFunction::CUBIC_IN_OUT;
+    bool _reverse = false;
+    T _initial;
+    decltype(__ToTuple(_initial)) _initial_tuple;
+
+private:
+
+    void __Step(int max_index);
+
+    float __Compare(int x, int lower, int upper);
+
+    template <typename TupleT>
+    void __ApplyTransform(TupleT&& transformed_tuple, std::vector<float> transformer, float easing, TransformType transform);
+
+};
+
+} //CF
+
+// #define CFRAME_IMPLEMENTATION
+#ifdef CFRAME_IMPLEMENTATION
+
+namespace {
 //TODO put these in anonymous namespace
 // ====================== Easing Functions ======================
 // The following easing functions ripped from AHeasing (https://github.com/warrenm/AHEasing)
@@ -297,329 +430,224 @@ float BounceEaseInOut(float p)
 	}
 }
 
-enum class EasingFunction {
-    LINEAR,
-    QUADRATIC_IN,
-    QUADRATIC_OUT,
-    QUADRATIC_IN_OUT,
-    CUBIC_IN,
-    CUBIC_OUT,
-    CUBIC_IN_OUT,
-    QUARTIC_IN,
-    QUARTIC_OUT,
-    QUARTIC_IN_OUT,
-    QUINTIC_IN,
-    QUINTIC_OUT,
-    QUINTIC_IN_OUT,
-    SINE_IN,
-    SINE_OUT,
-    SINE_IN_OUT,
-    CIRCULAR_IN,
-    CIRCULAR_OUT,
-    CIRCULAR_IN_OUT,
-    EXPONENTIAL_IN,
-    EXPONENTIAL_OUT,
-    EXPONENTIAL_IN_OUT,
-    ELASTIC_IN,
-    ELASTIC_OUT,
-    ELASTIC_IN_OUT,
-    BACK_IN,
-    BACK_OUT,
-    BACK_IN_OUT,
-    BOUNCE_IN,
-    BOUNCE_OUT,
-    BOUNCE_IN_OUT
-};
-
-float __CalculateEasing(EasingFunction easing_function, float idx) {
+float __CalculateEasing(CF::EasingFunction easing_function, float idx) {
     switch (easing_function) {
-    case EasingFunction::LINEAR:
+    case CF::EasingFunction::LINEAR:
         return LinearInterpolation(idx);
-    case EasingFunction::QUADRATIC_IN:
+    case CF::EasingFunction::QUADRATIC_IN:
         return QuadraticEaseIn(idx);
-    case EasingFunction::QUADRATIC_OUT:
+    case CF::EasingFunction::QUADRATIC_OUT:
         return QuadraticEaseOut(idx);
-    case EasingFunction::QUADRATIC_IN_OUT:
+    case CF::EasingFunction::QUADRATIC_IN_OUT:
         return QuadraticEaseInOut(idx);
-    case EasingFunction::CUBIC_IN:
+    case CF::EasingFunction::CUBIC_IN:
         return CubicEaseIn(idx);
-    case EasingFunction::CUBIC_OUT:
+    case CF::EasingFunction::CUBIC_OUT:
         return CubicEaseOut(idx);
-    case EasingFunction::CUBIC_IN_OUT:
+    case CF::EasingFunction::CUBIC_IN_OUT:
         return CubicEaseInOut(idx);
-    case EasingFunction::QUARTIC_IN:
+    case CF::EasingFunction::QUARTIC_IN:
         return QuarticEaseIn(idx);
-    case EasingFunction::QUARTIC_OUT:
+    case CF::EasingFunction::QUARTIC_OUT:
         return QuadraticEaseOut(idx);
-    case EasingFunction::QUARTIC_IN_OUT:
+    case CF::EasingFunction::QUARTIC_IN_OUT:
         return QuadraticEaseInOut(idx);
-    case EasingFunction::QUINTIC_IN:
+    case CF::EasingFunction::QUINTIC_IN:
         return QuinticEaseIn(idx);
-    case EasingFunction::QUINTIC_OUT:
+    case CF::EasingFunction::QUINTIC_OUT:
         return QuinticEaseOut(idx);
-    case EasingFunction::QUINTIC_IN_OUT:
+    case CF::EasingFunction::QUINTIC_IN_OUT:
         return QuinticEaseInOut(idx);
-    case EasingFunction::SINE_IN:
+    case CF::EasingFunction::SINE_IN:
         return SineEaseIn(idx);
-    case EasingFunction::SINE_OUT:
+    case CF::EasingFunction::SINE_OUT:
         return SineEaseOut(idx);
-    case EasingFunction::SINE_IN_OUT:
+    case CF::EasingFunction::SINE_IN_OUT:
         return SineEaseInOut(idx);
-    case EasingFunction::CIRCULAR_IN:
+    case CF::EasingFunction::CIRCULAR_IN:
         return CircularEaseIn(idx);
-    case EasingFunction::CIRCULAR_OUT:
+    case CF::EasingFunction::CIRCULAR_OUT:
         return CircularEaseOut(idx);
-    case EasingFunction::CIRCULAR_IN_OUT:
+    case CF::EasingFunction::CIRCULAR_IN_OUT:
         return CircularEaseInOut(idx);
-    case EasingFunction::EXPONENTIAL_IN:
+    case CF::EasingFunction::EXPONENTIAL_IN:
         return ExponentialEaseIn(idx);
-    case EasingFunction::EXPONENTIAL_OUT:
+    case CF::EasingFunction::EXPONENTIAL_OUT:
         return ExponentialEaseOut(idx);
-    case EasingFunction::EXPONENTIAL_IN_OUT:
+    case CF::EasingFunction::EXPONENTIAL_IN_OUT:
         return ExponentialEaseInOut(idx);
-    case EasingFunction::ELASTIC_IN:
+    case CF::EasingFunction::ELASTIC_IN:
         return ElasticEaseIn(idx);
-    case EasingFunction::ELASTIC_OUT:
+    case CF::EasingFunction::ELASTIC_OUT:
         return ElasticEaseOut(idx);
-    case EasingFunction::ELASTIC_IN_OUT:
+    case CF::EasingFunction::ELASTIC_IN_OUT:
         return ElasticEaseInOut(idx);
-    case EasingFunction::BACK_IN:
+    case CF::EasingFunction::BACK_IN:
         return BackEaseIn(idx);
-    case EasingFunction::BACK_OUT:
+    case CF::EasingFunction::BACK_OUT:
         return BackEaseOut(idx);
-    case EasingFunction::BACK_IN_OUT:
+    case CF::EasingFunction::BACK_IN_OUT:
         return BackEaseInOut(idx);
-    case EasingFunction::BOUNCE_IN:
+    case CF::EasingFunction::BOUNCE_IN:
         return BounceEaseIn(idx);
-    case EasingFunction::BOUNCE_OUT:
+    case CF::EasingFunction::BOUNCE_OUT:
         return BounceEaseOut(idx);
-    case EasingFunction::BOUNCE_IN_OUT:
+    case CF::EasingFunction::BOUNCE_IN_OUT:
         return BounceEaseInOut(idx);
     default:
         break;
     }
 }
 
+}
 
-// https://gist.github.com/utilForever/1a058050b8af3ef46b58bcfa01d5375d
-template <class T, class... TArgs> decltype(void(T{std::declval<TArgs>()...}), std::true_type{}) test_is_braces_constructible(int);
-template <class, class...> std::false_type test_is_braces_constructible(...);
-template <class T, class... TArgs> using is_braces_constructible = decltype(test_is_braces_constructible<T, TArgs...>(0));
+template <typename T> 
+CF::Animation<T>::Animation(T initial_object, std::vector<CF::Keyframe<T>> keyframes){
+    init(initial_object, keyframes, _playmode, _easing_func);
+}
 
-struct any_type {
-  template<class T>
-  constexpr operator T(); // non explicit
-};
+template <typename T>
+CF::Animation<T>::Animation(T initial_object, std::vector<CF::Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing){
+    init(initial_object, keyframes, playmode, easing);
+}
 
-template<typename Tp>
-auto __ToTuple(Tp&& object) noexcept {
-    using type = std::decay_t<Tp>;
-    if constexpr(std::is_scalar_v<type>) {
-        return std::make_tuple(object);
-    } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type, any_type>{}) {
-        auto&& [p1, p2, p3, p4] = object;
-        return std::make_tuple(p1, p2, p3, p4);
-    } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type>{}) {
-        auto&& [p1, p2, p3] = object;
-        return std::make_tuple(p1, p2, p3);
-    } else if constexpr(is_braces_constructible<type, any_type, any_type>{}) {
-        auto&& [p1, p2] = object;
-        return std::make_tuple(p1, p2);
-    } else if constexpr(is_braces_constructible<type, any_type>{}) {
-        auto&& [p1] = object;
-        return std::make_tuple(p1);
-    } else {
-        return std::make_tuple();
+template <typename T>
+void CF::Animation<T>::init(T initial_object, std::vector<CF::Keyframe<T>> keyframes, CF::PlayMode playmode, CF::EasingFunction easing) {
+
+    _initial_tuple = __ToTuple(initial_object);
+    _keyframes = keyframes;
+    _playmode = playmode;
+    _easing_func = easing;
+
+    _index_checkpoints.push_back(0);
+    for (auto k : _keyframes) {
+        _index_checkpoints.push_back(_index_checkpoints.back() + k.easing_frames);
+        _index_checkpoints.push_back(_index_checkpoints.back() + k.held_frames);
     }
 }
 
+template <typename T>
+T CF::Animation<T>::get() {
+    if(playing) {
+        int max_index = 0;
+        for (int i = 0; i < _keyframes.size(); i++) {
+            max_index += _keyframes[i].easing_frames;
+            max_index += _keyframes[i].held_frames;
+        }
 
-enum class TransformType {
-    OFFSET,
-    SCALE,
-    TO
-};
+        // Step index based on playmode
+        __Step(max_index);
+    }
+
+    for (auto i = 0; i < _index_checkpoints.size(); i++) {
+        if ((_index_checkpoints[i] < index) && (i%2 != 1)) {
+            // auto transform_tuple = __ToTuple(_keyframes[(i/2)]._transformation);
+            float easing_index = __CalculateEasing(_easing_func, __Compare(index, _index_checkpoints[i], _index_checkpoints[i+1]));
+            __ApplyTransform(_initial_tuple, _keyframes[(i/2)].transform, easing_index, _keyframes[(i/2)].type);
+        }
+    }
+    return std::make_from_tuple<T>(std::move(_initial_tuple));
+}
 
 template <typename T>
-struct Keyframe{
+void CF::Animation<T>::__Step(int max_index) {
+    switch (_playmode) {
 
-    TransformType type;
-    std::vector<float> transform;
-    int easing_frames = 60;
-    int held_frames = 0;
-};
+        case PlayMode::LOOP:
+            if(_reverse) {
+                index--;
+            }
+            else {
+                index++;
+            }
 
-enum class PlayMode {
-    ONCE,
-    LOOP,
-    BOOMERANG_ONCE,
-    BOOMERANG_LOOP
-};
+            index = index % max_index;
+            break;
+        
+        case PlayMode::ONCE:
+            if(_reverse) {
+                index--;
+            }
+            else {
+                index++;
+            }
+            
+            if(index >= max_index) {
+                index = max_index;
+            }
 
-//TODO define the header at top of file, then put implementations under #ifdef etc..
+            if(index <= 0) {
+                index = 0;
+            }
+            break;
+        
+        case PlayMode::BOOMERANG_ONCE:
+            if(_reverse) {
+                index--;
+            }
+            else {
+                index++;
+            }
+            
+            if(index == max_index) {
+                _reverse = true;
+            }
+
+            if(index < 0) {
+                index = 0;
+            }
+            break;
+        
+        case PlayMode::BOOMERANG_LOOP:
+            if(_reverse) {
+                index--;
+            }
+            else {
+                index++;
+            }
+            
+            if(index == max_index) {
+                _reverse = true;
+            }
+
+            if(index == 0) {
+                _reverse = false;
+            }
+            break;
+    }
+}
+
 template <typename T>
-struct Animation {
-
-    Animation() {}
-
-    Animation(T initial_object, std::vector<Keyframe<T>> keyframes){
-        init(initial_object, keyframes, _playmode, _easing_func);
+float CF::Animation<T>::__Compare(int x, int lower, int upper) {
+    float output;
+    if (x < lower) {
+        output = 0;
+    }
+    else if (x > upper) {
+        output = 1;
+    }
+    else {
+        output = ((float)(x-lower) / (float)(upper-lower));
     }
 
-    Animation(T initial_object, std::vector<Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing){
+    return output;
+}
 
-        init(initial_object, keyframes, playmode, easing);
-    }
+template <typename T>
+template <typename TupleT>
+void CF::Animation<T>::__ApplyTransform(TupleT&& transformed_tuple, std::vector<float> transformer, float easing, TransformType transform) {
+    int idx = 0;
 
-    void init(T initial_object, std::vector<Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing) {
+    // for some reason, idx only increments correctly if you do it in the transformation
+    // (and not if you use a separate idx++; line.)
+    std::apply([&](auto&& ...out){
 
-        _initial_tuple = __ToTuple(initial_object);
-        _keyframes = keyframes;
-        _playmode = playmode;
-        _easing_func = easing;
+        if (transform == TransformType::OFFSET)
+            ((out += (easing*transformer[idx++])), ...);
+        else if (transform == TransformType::SCALE)
+            ((out *= (1+(easing*(transformer[idx++]-1)))), ...);
 
-        _index_checkpoints.push_back(0);
-        for (auto k : _keyframes) {
-            _index_checkpoints.push_back(_index_checkpoints.back() + k.easing_frames);
-            _index_checkpoints.push_back(_index_checkpoints.back() + k.held_frames);
-        }
-    }
+    }, std::forward<TupleT>(transformed_tuple));
+}
 
-    T get() {
-        if(playing) {
-            int max_index = 0;
-            for (int i = 0; i < _keyframes.size(); i++) {
-                max_index += _keyframes[i].easing_frames;
-                max_index += _keyframes[i].held_frames;
-            }
-
-            // Step index based on playmode
-            __Step(max_index);
-        }
-
-        for (auto i = 0; i < _index_checkpoints.size(); i++) {
-            if ((_index_checkpoints[i] < index) && (i%2 != 1)) {
-                // auto transform_tuple = __ToTuple(_keyframes[(i/2)]._transformation);
-                float easing_index = __CalculateEasing(_easing_func, __Compare(index, _index_checkpoints[i], _index_checkpoints[i+1]));
-                __ApplyTransform(_initial_tuple, _keyframes[(i/2)].transform, easing_index, _keyframes[(i/2)].type);
-            }
-        }
-        return std::make_from_tuple<T>(std::move(_initial_tuple));
-    }
-
-    
-    // I suppose for now if you really want to modify these, feel free
-    std::vector<Keyframe<T>> _keyframes;
-    std::vector<int> _index_checkpoints;
-    int index = 0;
-    bool playing = true;
-    PlayMode _playmode = PlayMode::ONCE;
-    EasingFunction _easing_func = EasingFunction::CUBIC_IN_OUT;
-    bool _reverse = false;
-    T _initial;
-    decltype(__ToTuple(_initial)) _initial_tuple;
-
-private:
-
-    void __Step(int max_index) {
-        switch (_playmode) {
-
-            case PlayMode::LOOP:
-                if(_reverse) {
-                    index--;
-                }
-                else {
-                    index++;
-                }
-
-                index = index % max_index;
-                break;
-            
-            case PlayMode::ONCE:
-                if(_reverse) {
-                    index--;
-                }
-                else {
-                    index++;
-                }
-                
-                if(index >= max_index) {
-                    index = max_index;
-                }
-
-                if(index <= 0) {
-                    index = 0;
-                }
-                break;
-            
-            case PlayMode::BOOMERANG_ONCE:
-                if(_reverse) {
-                    index--;
-                }
-                else {
-                    index++;
-                }
-                
-                if(index == max_index) {
-                    _reverse = true;
-                }
-
-                if(index < 0) {
-                    index = 0;
-                }
-                break;
-            
-            case PlayMode::BOOMERANG_LOOP:
-                if(_reverse) {
-                    index--;
-                }
-                else {
-                    index++;
-                }
-                
-                if(index == max_index) {
-                    _reverse = true;
-                }
-
-                if(index == 0) {
-                    _reverse = false;
-                }
-                break;
-        }
-    }
-
-    float __Compare(int x, int lower, int upper) {
-        float output;
-        if (x < lower) {
-            output = 0;
-        }
-        else if (x > upper) {
-            output = 1;
-        }
-        else {
-            output = ((float)(x-lower) / (float)(upper-lower));
-        }
-
-        return output;
-    }
-
-    //TODO probably put these in anonymous namespace as well
-    template <typename TupleT>
-    void __ApplyTransform(TupleT&& transformed_tuple, std::vector<float> transformer, float easing, TransformType transform) {
-        int idx = 0;
-
-        // for some reason, idx only increments correctly if you do it in the transformation
-        // (and not if you use a separate idx++; line.)
-        std::apply([&](auto&& ...out){
-
-            if (transform == TransformType::OFFSET)
-                ((out += (easing*transformer[idx++])), ...);
-            else if (transform == TransformType::SCALE)
-                ((out *= (1+(easing*(transformer[idx++]-1)))), ...);
-
-        }, std::forward<TupleT>(transformed_tuple));
-    }
-
-};
-
-} //CF
+#endif // CFRAME_IMPLEMENTATION

@@ -1,11 +1,9 @@
 #include "raylib.h"
+
+#define CFRAME_IMPLEMENTATION
 #include "../cframe.hpp"
 
 #include <vector>
-
-struct myfloat {
-    float f;
-};
 
 int main() {
 
