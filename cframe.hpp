@@ -411,6 +411,28 @@ struct any_type {
   constexpr operator T(); // non explicit
 };
 
+template<typename Tp>
+auto __ToTuple(Tp&& object) noexcept {
+    using type = std::decay_t<Tp>;
+    if constexpr(std::is_scalar_v<type>) {
+        return std::make_tuple(object);
+    } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type, any_type>{}) {
+        auto&& [p1, p2, p3, p4] = object;
+        return std::make_tuple(p1, p2, p3, p4);
+    } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type>{}) {
+        auto&& [p1, p2, p3] = object;
+        return std::make_tuple(p1, p2, p3);
+    } else if constexpr(is_braces_constructible<type, any_type, any_type>{}) {
+        auto&& [p1, p2] = object;
+        return std::make_tuple(p1, p2);
+    } else if constexpr(is_braces_constructible<type, any_type>{}) {
+        auto&& [p1] = object;
+        return std::make_tuple(p1);
+    } else {
+        return std::make_tuple();
+    }
+}
+
 
 enum class TransformType {
     OFFSET,
@@ -451,7 +473,7 @@ struct Animation {
 
     void init(T initial_object, std::vector<Keyframe<T>> keyframes, PlayMode playmode, EasingFunction easing) {
 
-        _initial = initial_object;
+        _initial_tuple = __ToTuple(initial_object);
         _keyframes = keyframes;
         _playmode = playmode;
         _easing_func = easing;
@@ -475,16 +497,14 @@ struct Animation {
             __Step(max_index);
         }
 
-        auto initial_tuple = __ToTuple(_initial);
-
         for (auto i = 0; i < _index_checkpoints.size(); i++) {
             if ((_index_checkpoints[i] < index) && (i%2 != 1)) {
                 // auto transform_tuple = __ToTuple(_keyframes[(i/2)]._transformation);
                 float easing_index = __CalculateEasing(_easing_func, __Compare(index, _index_checkpoints[i], _index_checkpoints[i+1]));
-                __ApplyTransform(initial_tuple, _keyframes[(i/2)].transform, easing_index, _keyframes[(i/2)].type);
+                __ApplyTransform(_initial_tuple, _keyframes[(i/2)].transform, easing_index, _keyframes[(i/2)].type);
             }
         }
-        return std::make_from_tuple<T>(std::move(initial_tuple));
+        return std::make_from_tuple<T>(std::move(_initial_tuple));
     }
 
     
@@ -497,6 +517,7 @@ struct Animation {
     EasingFunction _easing_func = EasingFunction::CUBIC_IN_OUT;
     bool _reverse = false;
     T _initial;
+    decltype(__ToTuple(_initial)) _initial_tuple;
 
 private:
 
@@ -599,27 +620,6 @@ private:
         }, std::forward<TupleT>(transformed_tuple));
     }
 
-    template<typename Tp>
-    auto __ToTuple(Tp&& object) noexcept {
-        using type = std::decay_t<Tp>;
-        if constexpr(std::is_scalar_v<type>) {
-            return std::make_tuple(object);
-        } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type, any_type>{}) {
-            auto&& [p1, p2, p3, p4] = object;
-            return std::make_tuple(p1, p2, p3, p4);
-        } else if constexpr(is_braces_constructible<type, any_type, any_type, any_type>{}) {
-            auto&& [p1, p2, p3] = object;
-            return std::make_tuple(p1, p2, p3);
-        } else if constexpr(is_braces_constructible<type, any_type, any_type>{}) {
-            auto&& [p1, p2] = object;
-            return std::make_tuple(p1, p2);
-        } else if constexpr(is_braces_constructible<type, any_type>{}) {
-            auto&& [p1] = object;
-            return std::make_tuple(p1);
-        } else {
-            return std::make_tuple();
-        }
-    }
 };
 
 } //CF
