@@ -2,6 +2,7 @@
 #include <tuple>
 #include <type_traits>
 #include <vector>
+#include <iostream>
 
 namespace {
 // https://gist.github.com/utilForever/1a058050b8af3ef46b58bcfa01d5375d
@@ -95,7 +96,6 @@ enum class EasingFunction {
     BOUNCE_IN_OUT
 };
 
-//TODO define the header at top of file, then put implementations under #ifdef etc..
 template <typename T>
 struct Animation {
 
@@ -134,11 +134,10 @@ private:
 
 } //CF
 
-// #define CFRAME_IMPLEMENTATION
+#define CFRAME_IMPLEMENTATION
 #ifdef CFRAME_IMPLEMENTATION
 
 namespace {
-//TODO put these in anonymous namespace
 // ====================== Easing Functions ======================
 // The following easing functions ripped from AHeasing (https://github.com/warrenm/AHEasing)
 
@@ -539,14 +538,16 @@ T CF::Animation<T>::get() {
         __Step(max_index);
     }
 
+    auto output_tuple = _initial_tuple; //resets output to initial at each step
+
     for (auto i = 0; i < _index_checkpoints.size(); i++) {
         if ((_index_checkpoints[i] < index) && (i%2 != 1)) {
             // auto transform_tuple = __ToTuple(_keyframes[(i/2)]._transformation);
             float easing_index = __CalculateEasing(_easing_func, __Compare(index, _index_checkpoints[i], _index_checkpoints[i+1]));
-            __ApplyTransform(_initial_tuple, _keyframes[(i/2)].transform, easing_index, _keyframes[(i/2)].type);
+            __ApplyTransform(output_tuple, _keyframes[(i/2)].transform, easing_index, _keyframes[(i/2)].type);
         }
     }
-    return std::make_from_tuple<T>(std::move(_initial_tuple));
+    return std::make_from_tuple<T>(std::move(output_tuple));
 }
 
 template <typename T>
@@ -646,6 +647,9 @@ void CF::Animation<T>::__ApplyTransform(TupleT&& transformed_tuple, std::vector<
             ((out += (easing*transformer[idx++])), ...);
         else if (transform == TransformType::SCALE)
             ((out *= (1+(easing*(transformer[idx++]-1)))), ...);
+        else if (transform == TransformType::TO) {
+            ((out += ( easing * (transformer[idx++]-out) )), ...);
+        }
 
     }, std::forward<TupleT>(transformed_tuple));
 }

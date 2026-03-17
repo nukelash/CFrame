@@ -15,36 +15,42 @@ int main() {
             .type = CF::TransformType::OFFSET,
             .transform = {200, 0, 0, 0},
             .easing_frames = 60,
-            .held_frames = 10
+            .held_frames = 0
         },
         {
             .type = CF::TransformType::OFFSET,
             .transform = {-100, -200, 0, 0},
             .easing_frames = 60,
-            .held_frames = 10
+            .held_frames = 0
         },
         {
             .type = CF::TransformType::OFFSET,
             .transform = {-100, 200, 0, 0},
             .easing_frames = 60,
-            .held_frames = 10
+            .held_frames = 0
         }
     };
 
     std::vector<CF::Keyframe<Color>> color_keyframes = {
         {
-            .type = CF::TransformType::OFFSET,
-            .transform = {-255, 255, 0, 0},
+            .type = CF::TransformType::TO,
+            .transform = {0, 255, 0, 255},
+            .easing_frames = 60,
+            .held_frames = 0
             
         },
         {
-            .type = CF::TransformType::OFFSET,
-            .transform = {0, -255, 255, 0},
+            .type = CF::TransformType::TO,
+            .transform = {0, 0, 255, 255},
+            .easing_frames = 60,
+            .held_frames = 0
             
         },
         {
-            .type = CF::TransformType::OFFSET,
-            .transform = {255, 0, -255, 0},
+            .type = CF::TransformType::TO,
+            .transform = {255, 0, 0, 255},
+            .easing_frames = 60,
+            .held_frames = 0
             
         }
     };
@@ -53,15 +59,22 @@ int main() {
         {
             .type = CF::TransformType::OFFSET,
             .transform = {1.0f},
-            .easing_frames = 120
+            .easing_frames = 60,
+            .held_frames = 0
+        },
+        {
+            .type = CF::TransformType::OFFSET,
+            .transform = {-1.0},
+            .easing_frames = 60,
+            .held_frames = 0
         }
     };
 
-    CF::Animation<float> roundness = {0.0f, roundness_keyframes, CF::PlayMode::BOOMERANG_LOOP, CF::EasingFunction::QUADRATIC_IN_OUT};
+    CF::Animation<float> roundness = {0.0f, roundness_keyframes, CF::PlayMode::LOOP, CF::EasingFunction::CUBIC_OUT};
 
-    CF::Animation<Rectangle> rectangle = {{200, 250, 60, 60}, rectangle_keyframes, CF::PlayMode::LOOP, CF::EasingFunction::QUADRATIC_IN_OUT};
+    CF::Animation<Rectangle> rectangle = {{200, 250, 60, 60}, rectangle_keyframes, CF::PlayMode::LOOP, CF::EasingFunction::CUBIC_OUT};
 
-    CF::Animation<Color> color = {{255, 0, 0, 255}, color_keyframes, CF::PlayMode::BOOMERANG_LOOP, CF::EasingFunction::CUBIC_IN_OUT};
+    CF::Animation<Color> color = {{255, 0, 0, 255}, color_keyframes, CF::PlayMode::LOOP, CF::EasingFunction::CUBIC_OUT};
 
     while(!WindowShouldClose()) {
 
